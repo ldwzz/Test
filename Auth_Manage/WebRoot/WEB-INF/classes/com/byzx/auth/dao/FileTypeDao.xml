@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.FileTypeDao">
+	<resultMap type="FileType" id="filesTypeMap">
+		<id column="file_type_id" property="fileTypeId" />
+		<result column="type_name" property="typeName" />
+		<result column="type_code" property="typeCode" />
+		<result column="parent_id" property="parentId" />
+		<result column="grade" property="grade" />
+	</resultMap>
+	<!-- 一对多关联查询资源文件表 -->
+	<resultMap type="Files" id="filesMap">
+		<id column="file_id" property="fileId" />
+		<result column="file_type_id" property="fileTypeId" />
+		<result column="file_name" property="fileName" />
+		<result column="file_desc" property="fileDesc" />
+		<result column="file_url" property="fileUrl" />
+		<result column="file_pswd" property="filePswd" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="update_time" property="updateTime" />
+		<result column="update_by" property="updateBy" />
+		<result column="is_delete" property="isDelete" />
+	</resultMap>
+	<!-- 查询所有文件 -->
+	<select id="findFileType" resultMap="filesTypeMap">
+		SELECT * FROM file_type
+	</select>
+	<!-- 在file表中查询资源类型id -->
+	<select id="findFiles" resultMap="filesMap">
+		SELECT * FROM files 
+	</select>
+	<!-- 查询是否有重复文件夹 -->
+	<select id="findTypeCode" parameterType="FileType" resultType="int">
+      select count(*) from file_type where 
+      type_name=#{typeName} and parent_id=#{parentId}
+	</select>
+	<!-- 新建文件夹 -->
+	<insert id="insertFileType" parameterType="FileType">
+		insert into file_type(type_name,type_code,parent_id,grade)
+		values(#{typeName},#{typeCode},#{parentId},#{grade})
+	</insert>	
+	<!-- 根据当前的pid查询父id不为零的code -->
+	<select id="findfileTypeByPid" parameterType="FileType" resultMap="filesTypeMap">
+	  select * from file_type where file_type_id=#{parentId}
+	</select>
+	<!-- 删除文件夹先查询是否有子文件夹 deleteFileType-->
+	<select id="findContainFileType" parameterType="FileType" resultType="int">
+	select count(*) from file_type where file_type_id=#{fileTypeId}
+	</select>
+	<!-- 根据当前的pid查询父id为零的code -->
+	<select id="findfileTypeByPidTwo" parameterType="FileType" resultType="String">
+	  select type_code from file_type where file_type_id=#{fileTypeId}
+	</select>
+	
+	<!-- 所有信息 -->
+	<select id="findFileTypeCodePid" parameterType="FileType" resultMap="filesTypeMap">
+	  select * from file_type where file_type_id=#{fileTypeId}
+	</select>
+	 <!-- pid为零的code -->
+	<select id="findFileTypeCode" parameterType="FileType" resultType="String">
+	  select type_code from file_type where file_type_id=#{fileTypeId}
+	</select>		
+	<!-- 根据当前的pid查询父id为零的code -->
+	<select id="findFileTypeCodePID" parameterType="FileType" resultMap="filesTypeMap">
+	  select * from file_type where file_type_id=#{parentId}
+	</select>
+	<!-- 查pid -->
+	<!-- <select id="findFileTypeCodePid" parameterType="FileType" resultMap="filesTypeMap">
+	  select * from file_type where file_type_id=#{fileTypeId}
+	</select> --> 
+	<!-- 查询子文件夹 -->
+	<select id="findFileTypeId" parameterType="FileType" resultMap="filesTypeMap">
+	SELECT file_type_id FROM file_type WHERE parent_id=#{fileTypeId}
+	</select>
+	
+</mapper>

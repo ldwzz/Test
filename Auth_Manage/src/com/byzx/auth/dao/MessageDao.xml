@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.MessageDao">
+
+	<!-- 站内信Map映射 -->
+	<resultMap type="Message" id="messageMap">
+		<id column="msg_id" property="msgId" />
+		<result column="msg_title" property="msgTitle" />
+		<result column="msg_context" property="msgContext" />
+		<result column="file_url" property="fileUrl" />
+		<result column="send_type" property="sendType" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+
+		<!-- 站内信关系集合 -->
+		<association property="userMessage" javaType="UserMessage">
+			<id column="user_msg_id" property="userMsgId" />
+			<result column="read_state" property="readState" />
+			<result column="from_user" property="fromUser" />
+			<result column="from_name" property="fromName" />
+			<result column="to_user" property="toUser" />
+			<result column="to_userIds" property="toUserIds" />
+			<result column="to_name" property="toName" />
+			<result column="parent_id" property="parentId" />
+		</association>
+	</resultMap>
+	<!-- 查询我的站内信 -->
+	<select id="findMyMessage" parameterType="hashmap" resultMap="messageMap">
+		SELECT m.*,u.user_msg_id,u.`read_state`,u.`from_user`,r.`user_name`
+		from_name,u.`to_user`,u.`parent_id` FROM user_info r,message
+		m,user_message u
+		<where>
+			u.`from_user`=r.`user_id` AND m.msg_id=u.msg_id
+			AND
+			u.`to_user`=#{message.userMessage.toUser}
+			<if test="message.msgTitle!=null and message.msgTitle!=''">
+				and m.msg_Title like
+				concat("%",concat(#{message.msgTitle},"%"))
+			</if>
+			<if
+				test="message.userMessage.readState!=null and message.userMessage.readState!=''">
+				and u.read_State=#{message.userMessage.readState}
+			</if>
+			<if test="message.sendType!=null and message.sendType!=''">
+				and m.send_Type=#{message.sendType}
+			</if>
+			<if test="message.endTime!=null and message.endTime!=''">
+				and (m.`create_time` &lt; #{message.endTime}
+				or
+				m.`create_time`
+				like concat(#{message.endTime},"%"))
+			</if>
+			<if test="message.startTime!=null and message.startTime!=''">
+				and (m.`create_time` &gt; #{message.startTime}
+				or
+				m.`create_time`
+				like concat(#{message.startTime},"%"))
+			</if>
+		</where>
+		order by m.`create_time` desc
+		limit
+		#{page.pageIndex},#{page.pageNum}
+	</select>
+
+	<!-- 查询我的站内信条数 -->
+	<select id="getMyMessageNum" parameterType="Message" resultType="integer">
+		select count(*) from user_info r,message
+		m,user_message u
+		<where>
+			u.`from_user`=r.`user_id` AND m.msg_id=u.msg_id
+			AND
+			u.`to_user`=#{userMessage.toUser}
+			<if test="msgTitle!=null and msgTitle!=''">
+				and m.msg_Title like
+				concat("%",concat(#{msgTitle},"%"))
+			</if>
+			<if test="userMessage.readState!=null and userMessage.readState!=''">
+				and u.read_State=#{userMessage.readState}
+			</if>
+			<if test="sendType!=null and sendType!=''">
+				and m.send_Type=#{sendType}
+			</if>
+			<if test="endTime!=null and endTime!=''">
+				and (m.`create_time` &lt; #{endTime}
+				or
+				m.`create_time`
+				like concat(#{endTime},"%"))
+			</if>
+			<if test="startTime!=null and startTime!=''">
+				and (m.`create_time` &gt; #{startTime}
+				or
+				m.`create_time`
+				like concat(#{startTime},"%"))
+			</if>
+		</where>
+	</select>
+
+	<!-- 查询已发送的站内信 -->
+	<select id="findMessage" parameterType="hashmap" resultMap="messageMap">
+		SELECT * FROM message m
+		<where>
+			m.`create_by`=#{message.createBy}
+			<if test="message.msgTitle!=null and message.msgTitle!=''">
+				and m.msg_Title like
+				concat("%",concat(#{message.msgTitle},"%"))
+			</if>
+			<if test="message.sendType!=null and message.sendType!=''">
+				and m.send_Type=#{message.sendType}
+			</if>
+			<if test="message.endTime!=null and message.endTime!=''">
+				and (m.`create_time` &lt; #{message.endTime}
+				or
+				m.`create_time`
+				like concat(#{message.endTime},"%"))
+			</if>
+			<if test="message.startTime!=null and message.startTime!=''">
+				and (m.`create_time` &gt; #{message.startTime}
+				or
+				m.`create_time`
+				like concat(#{message.startTime},"%"))
+			</if>
+		</where>
+		order by m.`create_time` desc
+		limit
+		#{page.pageIndex},#{page.pageNum}
+	</select>
+
+	<!-- 查询已发送的站内信条数 -->
+	<select id="getMessageNum" parameterType="Message" resultType="integer">
+		select count(*) from message m
+		<where>
+			m.`create_by`=#{createBy}
+			<if test="msgTitle!=null and msgTitle!=''">
+				and m.msg_Title like
+				concat("%",concat(#{msgTitle},"%"))
+			</if>
+			<if test="sendType!=null and sendType!=''">
+				and m.send_Type=#{sendType}
+			</if>
+			<if test="endTime!=null and endTime!=''">
+				and (m.`create_time` &lt; #{endTime}
+				or
+				m.`create_time`
+				like concat(#{endTime},"%"))
+			</if>
+			<if test="startTime!=null and startTime!=''">
+				and (m.`create_time` &gt; #{startTime}
+				or
+				m.`create_time`
+				like concat(#{startTime},"%"))
+			</if>
+		</where>
+	</select>
+
+	<!-- 根据userName模糊查询用户名 -->
+	<select id="findUserNameByName" parameterType="UserInfo"
+		resultType="string">
+		SELECT group_concat(user_name) FROM user_info WHERE
+		user_name like
+		concat("%",concat(#{userName},"%")) and user_id not
+		in(#{userId})
+		and user_state=1 and is_delete=0
+	</select>
+
+	<!-- 根据userName查询userId -->
+	<select id="findUserIdByName" parameterType="string" resultType="integer">
+		SELECT user_id FROM user_info WHERE user_name=#{userName}
+	</select>
+
+	<!-- 根据userIds查询用户名 -->
+	<select id="findUserName" parameterType="string" resultType="string">
+		SELECT user_name FROM user_info WHERE user_id=#{userId}
+	</select>
+
+	<!-- 根据groupId查询部门名 -->
+	<select id="findGroupName" parameterType="string" resultType="string">
+		SELECT group_name groupName FROM user_group WHERE group_id=#{groupId}
+	</select>
+
+	<!-- 根据groupId查询拥有用户 -->
+	<select id="findUserIdsByGroupId" parameterType="hashmap"
+		resultType="string">
+		SELECT group_concat(user_id) FROM user_info WHERE
+		group_id=#{groupId} and user_id not in(#{userId})
+	</select>
+
+	<!-- 根据teamId查询拥有用户 -->
+	<select id="findUserIdsByTeamId" parameterType="hashmap"
+		resultType="string">
+		SELECT group_concat(user_id) FROM team_member WHERE
+		team_id=#{teamId} and user_id not in(#{userId})
+	</select>
+
+	<!-- 根据projId查询拥有用户 -->
+	<select id="findUserIdsByProjId" parameterType="hashmap"
+		resultType="string">
+		SELECT group_concat(m.`user_id`) FROM `project_info`
+		p,`proj_team`
+		t,`team_member` m
+		WHERE p.`proj_id`=t.`proj_id` AND
+		t.`team_id`=m.`team_id` AND p.`proj_id`=#{projId}
+		and m.`user_id` not
+		in (#{userId})
+	</select>
+
+	<!-- 查询所有用户 -->
+	<select id="findUserInfo" parameterType="UserInfo" resultType="UserInfo">
+		select user_id
+		userId,user_name userName from user_info where user_id
+		not in (#{userId}) and user_state=1 and is_delete=0
+	</select>
+
+	<!-- 查询所有部门 -->
+	<select id="findUserGroup" resultType="UserGroupInfo">
+		select group_id
+		groupId,group_name groupName from user_group where group_state=1
+	</select>
+
+	<!-- 插入站内信内容 -->
+	<insert id="insertMessage" parameterType="Message"
+		useGeneratedKeys="true" keyProperty="msgId">
+		insert into message
+		(msg_Title,msg_context,file_url,send_type,create_time,create_by)
+		values(#{msgTitle},#{msgContext},#{fileUrl},#{sendType},now(),#{createBy})
+	</insert>
+
+	<!-- 插入站内信关系 -->
+	<insert id="insertUserMessage" parameterType="Message">
+		insert into
+		user_message (msg_id,read_state,from_user,to_user,parent_id)
+		values(#{userMessage.msgId},'0',#{userMessage.fromUser},#{userMessage.toUser},#{userMessage.parentId})
+	</insert>
+
+	<!--全部标为已读 -->
+	<update id="updateMyMessageState" parameterType="UserMessage">
+		UPDATE `user_message` SET read_state=1
+		<where>
+			to_user=#{toUser}
+			<!-- 单个标为已读 -->
+			<if test="msgId!=null and msgId!=''">
+				and msg_id=#{msgId}
+			</if>
+		</where>
+	</update>
+
+	<!-- 查询所有项目 -->
+	<select id="findAllProject" resultType="ProjectInfo">
+		select proj_id
+		projId,proj_Name projName from Project_Info
+	</select>
+
+	<!-- 查询项目组 -->
+	<select id="findProjectTeamByProjId" parameterType="ProjectInfo"
+		resultType="ProjectTeam">
+		select team_Id teamId,team_Name teamName from Proj_Team
+		where
+		proj_Id=#{projId}
+	</select>
+
+	<!-- 根据teamId查询项目组名 -->
+	<select id="findTeamNameById" parameterType="ProjectTeam"
+		resultType="string">
+		select team_name from proj_team where team_id=#{teamId}
+	</select>
+
+	<!-- 根据projId查询项目名 -->
+	<select id="findProjNameById" parameterType="ProjectInfo"
+		resultType="string">
+		select proj_name from project_info where proj_id=#{projId}
+	</select>
+
+	<!-- 查询站内信详情 -->
+	<select id="findMyMessageDetail" parameterType="UserMessage"
+		resultMap="messageMap">
+		select m.*,u.*,r.`user_name` from_name from message m,user_message u,user_info r where
+		u.`from_user`=r.`user_id` and
+		m.msg_id=u.msg_id and u.user_Msg_Id=#{userMsgId}
+	</select>
+	
+	<!-- 查询站内信父邮件 -->
+	<select id="findMyMessageParent" parameterType="UserMessage"
+		resultMap="messageMap">
+		select m.*,u.*,r.`user_name` from_name from message m,user_message u,user_info r where
+		u.`from_user`=r.`user_id` and
+		m.msg_id=u.msg_id and u.user_Msg_Id=#{parentId}
+	</select>
+
+	<!-- 查询所有收件人 -->
+	<select id="findToUserNames" parameterType="integer" resultType="string">
+		SELECT GROUP_CONCAT(user_name) FROM user_info WHERE user_id IN (SELECT
+		to_user FROM user_message WHERE msg_id=#{msgId})
+	</select>
+	
+	<!-- 查询要回复的人 -->
+	<select id="findReplyUserNames" parameterType="Message" resultType="string">
+		SELECT GROUP_CONCAT(user_name) FROM user_info WHERE user_id IN (SELECT
+		to_user FROM user_message WHERE msg_id=#{msgId} and to_user !=${userMessage.toUser})
+	</select>
+	
+	<!-- 查询要回复的人Ids -->
+	<select id="findReplyUserIds" parameterType="Message" resultType="string">
+		SELECT group_concat(to_user) FROM user_message WHERE msg_id=#{msgId} and to_user !=${userMessage.toUser}
+	</select>
+	
+	<!-- 查询未读邮件 -->
+	<select id="findUnreadMail" parameterType="UserInfo" resultType="integer">
+	select count(*) from user_message where to_user=#{userId} and read_state=0
+	</select>
+</mapper>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.RecycleDao">
+	<!--实现po类映射 -->
+	<resultMap type="Recycle" id="getRecycleMap">
+		<id column="recy_id" property="recyId" />
+		<result column="db_user" property="dbUser" />
+		<result column="class_id" property="classId" />
+		<result column="intro" property="intro" />
+		<result column="table_name" property="tableName" />
+		<result column="key_name" property="keyName" />
+		<result column="create_time" property="createTime" />
+		<result column="key_value" property="keyValue" />
+		<result column="create_by" property="createBy" />
+	</resultMap>
+	<!-- 根据不同人登录进来查询回收站内对应的所有信息之分页 -->
+	<select id="findRecycle" parameterType="hashMap" resultMap="getRecycleMap">
+		      SELECT huishou.* FROM (SELECT distinct * FROM `recycle` WHERE `create_by`=#{userId} 
+    or  `class_id`in (#{classIds})) as huishou
+		<where>
+		
+		 <if test="recycle.intro!=null and recycle.intro!=''">
+		    and huishou.intro like concat("%",#{recycle.intro},"%")
+		 </if>
+		
+		<if test="recycle.createStartTime!=null and recycle.createStartTime!=''">
+		     and (huishou.create_time like concat(#{recycle.createStartTime},"%") or huishou.create_time &gt;#{recycle.createStartTime})
+		</if>
+		
+		<if test="recycle.createEndTime !=null and recycle.createEndTime!=''" >
+		     and (huishou.create_time like concat(#{recycle.createEndTime},"%") or huishou.create_time &lt; #{recycle.createEndTime})
+		</if>
+		</where>
+		 order by huishou.create_time desc limit #{page.pageIndex},#{page.pageNum}
+	</select>
+
+<!-- 根据不同的人进来查询对应的数据总条数 -->
+    <select id="findRecycleSum" parameterType="hashMap" resultType="int">
+			      SELECT count(*) FROM (SELECT distinct * FROM `recycle` WHERE `create_by`=#{userId} 
+    or  `class_id`in (#{classIds})) as huishou
+		<where>
+		
+		 <if test="recycle.intro!=null and recycle.intro!=''">
+		    and huishou.intro like concat("%",#{recycle.intro},"%")
+		 </if>
+		
+		<if test="recycle.createStartTime!=null and recycle.createStartTime!=''">
+		     and (huishou.create_time like concat(#{recycle.createStartTime},"%") or huishou.create_time &gt;#{recycle.createStartTime})
+		</if>
+		
+		<if test="recycle.createEndTime !=null and recycle.createEndTime!=''" >
+		     and (huishou.create_time like concat(#{recycle.createEndTime},"%") or huishou.create_time &lt; #{recycle.createEndTime})
+		</if>
+		</where>
+	</select>
+
+<!-- 根据recyId删除对应的数据 -->
+      <delete id="delRecycle"  parameterType="Recycle">
+        DELETE FROM recycle WHERE recy_id=#{recyId}
+      </delete>
+<!-- 根据参数插入recycle信息 -->
+      <insert id="insertRecycle" parameterType="Recycle" >
+       insert into recycle(db_user,class_id,intro,table_name,key_name,create_time,key_value,create_by) values(#{dbUser},#{classId},#{intro},#{tableName},#{keyName},now(),#{keyValue},#{createBy})
+      </insert>
+
+<!-- 根据参数删除（修改）相应的表的数据.对外提供接口，变穿整个项目super删除 -->
+     <update id="delData" parameterType="Recycle" >
+     update ${tableName} set is_delete='1' where ${keyName}=${keyValue}
+     </update>
+<!-- 恢复数据 -->
+     <update id="recoverData" parameterType="Recycle" >
+     update ${tableName} set is_delete='0' where ${keyName}=${keyValue}
+     </update>
+<!-- 根据recyId查询对应的信息 用于做恢复使用-->
+     <select id="findRecyByRecyId" parameterType="Recycle" resultMap="getRecycleMap">
+      select * from recycle where recy_id=#{recyId}
+     </select>
+<!-- 回收站里面的真正物理删除 -->
+      <delete id="delEndData" parameterType="Recycle" >
+      delete from ${tableName}  where ${keyName}=${keyValue}
+      </delete>
+</mapper>

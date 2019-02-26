@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.ProjectInfoDao">
+<!-- 配置resultMap -->
+	<resultMap type="ProjectVersion" id="ProjectVersionMap">
+		<id column="version_id" property="versionId" />
+		<result column="proj_id" property="projId" />
+		<result column="version_num" property="versionNum" />
+		<result column="version_desc" property="versionDesc" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="is_delete" property="isDelete" />
+		<result column="user_name" property="userName" />
+	</resultMap>
+<!--配置项目ResultMap -->
+	<resultMap type="ProjectInfo" id="projectInfoMap">
+		<id column="proj_id" property="projId" />
+		<result column="class_id" property="classId" />
+		<result column="proj_name" property="projName" />
+		<result column="proj_num" property="projNum" />
+		<result column="proj_desc" property="projDesc" />
+		<result column="vistor_type" property="vistorType" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="able_day" property="ableDay" />
+		<result column="proj_state" property="projState" />
+		<result column="proj_chief" property="projChief" />
+		<result column="remark" property="remark" />
+		<result column="proj_names" property="projNames" />
+		
+	</resultMap>
+<!-- 配置resultMap -->
+	<resultMap type="SysClass" id="getResultMap">
+		<id column="class_id" property="classId" />
+		<result column="class_name" property="className" />
+		<result column="parent_id" property="parentId" />
+		<result column="class_desc" property="classDesc" />
+		<result column="sys_type" property="sysType" />
+		<result column="grade" property="grade" />
+		<result column="class_code" property="classCode" />
+	</resultMap>
+<!--配置项目ResultMap -->
+	<resultMap type="ProjectTeam" id="ProjectTeamMap">
+		<id column="team_id" property="teamId" />
+		<result column="proj_id" property="projId" />
+		<result column="team_code" property="teamCode" />
+		<result column="team_name" property="teamName" />
+		<result column="team_desc" property="teamDesc" />
+		<result column="proj_chief" property="projChief" />
+		<result column="proj_name" property="projName" />
+		<result column="user_name" property="userName" />
+		</resultMap>
+<!-- 管理员登录，查询所有项目信息 -->
+	<select id="findAllProject" parameterType="hashmap" resultMap="projectInfoMap">
+		select * from(SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info`) as a
+		<where>
+			<if test="projectInfo.projNum!=null and projectInfo.projNum!=''">
+				and proj_num=#{projectInfo.projNum}
+			</if>
+			<if test="projectInfo.projName!=null and projectInfo.projName!=''">
+				and proj_name like concat("%",#{projectInfo.projName},"%") 
+			</if>
+			<if test="projectInfo.projNames!=null and projectInfo.projNames!=''">
+				and proj_names like concat("%",#{projectInfo.projNames},"%") 
+			</if>
+			<if test="projectInfo.projState!=null and projectInfo.projState!=''">
+				and proj_state=#{projectInfo.projState}
+			</if>
+			<if test="projectInfo.startTime!=null and projectInfo.startTime!=''">
+				and (create_time &gt; #{projectInfo.startTime} 
+				or create_time like concat(#{projectInfo.startTime},"%"))
+			</if>
+			<if test="projectInfo.endTime!=null and projectInfo.endTime!=''">
+				and (create_time &lt; #{projectInfo.endTime} 
+				or create_time like concat(#{projectInfo.endTime},"%"))
+			</if>
+		</where>
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 管理员登录，查询项目总条数-->	
+	<select id="findAllProjectNum" parameterType="ProjectInfo" resultType="int">
+		SELECT count(*) FROM (SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info`)
+		as tt
+		<where>
+			<if test="projNum!=null and projNum!=''">
+				and proj_num=#{projNum}
+			</if>
+			<if test="projName!=null and projName!=''">
+				and proj_name like concat("%",#{projName},"%") 
+			</if>
+			<if test="projNames!=null and projNames!=''">
+				and proj_names like concat("%",#{projNames},"%")
+			</if>
+			<if test="projState!=null and projState!=''">
+				and proj_state=#{projState}
+			</if>
+			<if test="startTime!=null and startTime!=''">
+				and (create_time &gt; #{startTime} 
+				or create_time like concat(#{startTime},"%"))
+			</if>
+			<if test="endTime!=null and endTime!=''">
+				and (create_time &lt; #{endTime} 
+				or create_time like concat(#{endTime},"%"))
+			</if>
+		</where>
+	</select>
+<!-- 项目经理登录，查询其所创建项目信息、公开项目、白名单项目信息 -->
+	<select id="findSomeProject" parameterType="hashmap" resultMap="projectInfoMap">
+		select * from (SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE
+		`create_by`=#{userId}
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.*  FROM `project_info` WHERE
+		`vistor_type`=0
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `vistor_type`=2
+		AND `proj_id` IN
+		(SELECT `proj_id` FROM `proj_user_list` WHERE
+		`user_id`=#{userId})) as proj
+		<where>
+			<if test="projectInfo.projNum!=null and projectInfo.projNum!=''">
+				and proj_num=#{projectInfo.projNum}
+			</if>
+			<if test="projectInfo.projName!=null and projectInfo.projName!=''">
+				and proj_name like concat("%",#{projectInfo.projName},"%") 
+			</if>
+			<if test="projectInfo.projNames!=null and projectInfo.projNames!=''">
+				and proj_names like concat("%",#{projectInfo.projNames},"%")
+			</if>
+			<if test="projectInfo.projState!=null and projectInfo.projState!=''">
+				and proj_state=#{projectInfo.projState}
+			</if>
+			<if test="projectInfo.startTime!=null and projectInfo.startTime!=''">
+				and (create_time &gt; #{projectInfo.startTime} 
+				or create_time like concat(#{projectInfo.startTime},"%"))
+			</if>
+			<if test="projectInfo.endTime!=null and projectInfo.endTime!=''">
+				and (create_time &lt; #{projectInfo.endTime} 
+				or create_time like concat(#{projectInfo.endTime},"%"))
+			</if>
+		</where>
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 项目经理登录，查询总项目数-->
+	<select id="findSomeProjectNum" parameterType="hashmap" resultType="int">
+		select count(*) from (SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE
+		`create_by`=#{userId}
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE
+		`vistor_type`=0
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `vistor_type`=2
+		AND `proj_id` IN
+		(SELECT `proj_id` FROM `proj_user_list` WHERE
+		`user_id`=#{userId})) as proj
+		<where>
+			<if test="projectInfo.projNum!=null and projectInfo.projNum!=''">
+				and proj_num=#{projectInfo.projNum}
+			</if>
+			<if test="projectInfo.projName!=null and projectInfo.projName!=''">
+				and proj_name  like concat("%",#{projectInfo.projName},"%")
+			</if>
+			<if test="projectInfo.projNames!=null and projectInfo.projNames!=''">
+				and proj_names like concat("%",#{projectInfo.projNames},"%")
+			</if>
+			<if test="projectInfo.projState!=null and projectInfo.projState!=''">
+				and proj_state=#{projectInfo.projState}
+			</if>
+			<if test="projectInfo.startTime!=null and projectInfo.startTime!=''">
+				and (create_time &gt; #{projectInfo.startTime} 
+				or create_time like concat(#{projectInfo.startTime},"%"))
+			</if>
+			<if test="projectInfo.endTime!=null and projectInfo.endTime!=''">
+				and (create_time &lt; #{projectInfo.endTime} 
+				or create_time like concat(#{projectInfo.endTime},"%"))
+			</if>
+		</where>
+	</select>
+<!-- 项目组长、项目成员登录，查询其所属项目信息、公开项目、白名单项目信息 -->
+	<select id="findOnlyProject" parameterType="hashmap" resultMap="projectInfoMap">
+		select * from (SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info`
+		WHERE `proj_id` =(
+		SELECT `proj_id` FROM `proj_team`
+		WHERE `team_id`=(SELECT `team_id`
+		FROM `team_member`
+		WHERE `user_id`=#{userId}))
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `vistor_type`=0
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `vistor_type`=2 AND `proj_id` IN
+		(SELECT `proj_id` FROM `proj_user_list` WHERE `user_id`=#{userId})
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `proj_id` =(
+		SELECT `proj_id` FROM `proj_team` where `proj_chief`=#{userId})
+		) as proj
+		<where>
+			<if test="projectInfo.projNum!=null and projectInfo.projNum!=''">
+				and proj_num=#{projectInfo.projNum}
+			</if>
+			<if test="projectInfo.projName!=null and projectInfo.projName!=''">
+				and proj_name like concat("%",#{projectInfo.projName},"%")
+			</if>
+			<if test="projectInfo.projNames!=null and projectInfo.projNames!=''">
+				and proj_names like concat("%",#{projectInfo.projNames},"%")
+			</if>
+			<if test="projectInfo.projState!=null and projectInfo.projState!=''">
+				and proj_state=#{projectInfo.projState}
+			</if>
+			<if test="projectInfo.startTime!=null and projectInfo.startTime!=''">
+				and (create_time &gt; #{projectInfo.startTime} 
+				or create_time like concat(#{projectInfo.startTime},"%"))
+			</if>
+			<if test="projectInfo.endTime!=null and projectInfo.endTime!=''">
+				and (create_time &lt; #{projectInfo.endTime} 
+				or create_time like concat(#{projectInfo.endTime},"%"))
+			</if>
+		</where>
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 项目组长、项目成员登录，查询总项目数-->
+	<select id="findOnlyProjectNum" parameterType="hashmap" resultType="int">
+		select count(*) from (SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info`
+		WHERE `proj_id` =(
+		SELECT `proj_id` FROM `proj_team`
+		WHERE `team_id`=(SELECT `team_id`
+		FROM `team_member`
+		WHERE `user_id`=#{userId}))
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `vistor_type`=0
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `vistor_type`=2 AND `proj_id` IN
+		(SELECT `proj_id` FROM `proj_user_list` WHERE `user_id`=#{userId})
+		UNION
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* FROM `project_info` WHERE `proj_id` =(
+		SELECT `proj_id` FROM `proj_team` where `proj_chief`=#{userId})
+		) as proj
+		<where>
+			<if test="projectInfo.projNum!=null and projectInfo.projNum!=''">
+				and proj_num=#{projectInfo.projNum}
+			</if>
+			<if test="projectInfo.projName!=null and projectInfo.projName!=''">
+				and proj_name like concat("%",#{projectInfo.projName},"%")
+			</if>
+			<if test="projectInfo.projNames!=null and projectInfo.projNames!=''">
+				and proj_names like concat("%",#{projectInfo.projNames},"%")
+			</if>
+			<if test="projectInfo.projState!=null and projectInfo.projState!=''">
+				and proj_state=#{projectInfo.projState}
+			</if>
+			<if test="projectInfo.startTime!=null and projectInfo.startTime!=''">
+				and (create_time &gt; #{projectInfo.startTime} 
+				or create_time like concat(#{projectInfo.startTime},"%"))
+			</if>
+			<if test="projectInfo.endTime!=null and projectInfo.endTime!=''">
+				and (create_time &lt; #{projectInfo.endTime} 
+				or create_time like concat(#{projectInfo.endTime},"%"))
+			</if>
+		</where>
+	</select>
+<!-- 通过项目id查看项目详情 -->
+	<select id="findProjectInfoByProjId" parameterType="int" resultMap="projectInfoMap">
+		SELECT get_userName( `proj_chief`)AS proj_names,project_info.* from `project_info` WHERE `proj_id`=#{projId}
+	</select>
+<!-- 配置项目动态ResultMap -->
+	<resultMap type="ProjectDynamic" id="projectDynamicMap">
+		<id column="dynamic_id" property="dynamicId"/>
+		<result column="proj_id" property="projId"/>
+		<result column="dynamic_desc" property="dynamicDesc"/>
+		<result column="create_time" property="createTime"/>
+		<result column="user_name" property="userName"/>
+		<result column="parent_id" property="parentId"/>
+		<result column="is_delete" property="isDelete"/>
+		<result column="user_names" property="userNames"/>
+	</resultMap>
+<!-- 通过项目id查询项目前10条动态 -->	
+    <select id="findProjectDynamic" parameterType="int" resultMap="projectDynamicMap">
+		SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` WHERE `proj_id`=#{projId} AND `is_delete`=0 AND `parent_id` IS NULL 
+		ORDER BY `create_time` DESC LIMIT 10
+	</select>	
+<!-- 查询动态下面所有评论 -->
+    <select id="findProjectDynamicByName" parameterType="ProjectDynamic" resultMap="projectDynamicMap">
+      SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic`where parent_id=#{dynamicId}  AND `is_delete`=0 order by create_time 
+    </select>
+	
+<!-- 自动发表动态，动态表插入数据 -->
+	<insert id="insertProjectDynamic" parameterType="ProjectDynamic">
+		INSERT INTO `proj_dynamic`(`proj_id`,`dynamic_desc`,`user_name`,create_time,is_delete) 
+		VALUES(#{projId},#{dynamicDesc},#{userName},now(),0)	
+	</insert>
+<!-- 发表评论，动态表插入数据 -->
+	<insert id="insertProjectDynamics" parameterType="ProjectDynamic">
+		INSERT INTO `proj_dynamic`(`proj_id`,`dynamic_desc`,`user_name`,create_time,is_delete,parent_id) 
+		VALUES(#{projId},#{dynamicDesc},#{userName},now(),0,#{parentId})	
+	</insert>
+<!-- 新建项目 -->
+    <insert id="insertProjectInfo" parameterType="ProjectInfo">
+		INSERT INTO `project_info`(`class_id`,`proj_name`,`proj_num`,proj_desc,vistor_type,create_time,create_by,start_time,end_time,proj_chief,remark,proj_state,able_day) 
+        VALUES(#{classId},#{projName}, date_format(now(),'%Y%m%d%H%i%s${projChief}'),#{projDesc},#{vistorType},now(),#{projChief},#{startTime},#{endTime},#{projChief},#{remark},0,DATEDIFF(#{endTime},#{startTime})*8)
+        <selectKey keyProperty="projId" order="AFTER" resultType="int">
+		 SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>	
+<!-- 通过项目id查询项目全部条动态 -->	
+    <select id="findProjectDynamics" parameterType="int" resultMap="projectDynamicMap">
+		SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` WHERE `proj_id`=#{projId} AND `is_delete`=0 AND `parent_id` IS NULL 
+		ORDER BY `create_time` DESC 
+	</select>	
+<!-- 分页查询所有项目动态 -->
+	<select id="findAllProjectDynamic" parameterType="hashmap" resultMap="projectDynamicMap">
+		select * from(SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` )as t
+		
+		<where>
+		`proj_id`=#{projectDynamic.projId} AND `is_delete`=0 AND `parent_id` IS NULL 
+			<if test="projectDynamic.dynamicDesc!=null and projectDynamic.dynamicDesc!=''">
+				and dynamic_desc like concat("%",#{projectDynamic.dynamicDesc},"%")
+			</if>
+			<if test="projectDynamic.userName!=null and projectDynamic.userName!=''">
+				and user_name like concat("%",#{projectDynamic.userName},"%")
+			</if>
+			<if test="projectDynamic.userNames!=null and projectDynamic.userNames!=''">
+				and user_names like concat("%",#{projectDynamic.userNames},"%")
+			</if>
+			<if test="projectDynamic.startTime!=null and projectDynamic.startTime!=''">
+				and (create_time &gt; #{projectDynamic.startTime} 
+				or create_time like concat(#{projectDynamic.startTime},"%"))
+			</if>
+			<if test="projectDynamic.endTime!=null and projectDynamic.endTime!=''">
+				and (create_time &lt; #{projectDynamic.endTime} 
+				or create_time like concat(#{projectDynamic.endTime},"%"))
+			</if>
+		</where>
+		
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 查询项目动态总条数-->	
+	<select id="findAllProjectDynamicNum" parameterType="ProjectDynamic" resultType="int">
+		SELECT count(*) FROM (SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` WHERE `proj_id`=#{projId} AND `is_delete`=0 AND `parent_id` IS NULL 
+		)
+		as tt
+		
+		<where>
+			<if test="dynamicDesc!=null and dynamicDesc!=''">
+				and dynamic_desc like concat("%",#{dynamicDesc},"%")
+			</if>
+			<if test="userName!=null and userName!=''">
+				and user_name like concat("%",#{userName},"%")
+			</if>
+			<if test="userNames!=null and userNames!=''">
+				and user_names like concat("%",#{userNames},"%")
+			</if>
+			<if test="startTime!=null and startTime!=''">
+				and (create_time &gt; #{startTime} 
+				or create_time like concat(#{startTime},"%"))
+			</if>
+			<if test="endTime!=null and endTime!=''">
+				and (create_time &lt; #{endTime} 
+				or create_time like concat(#{endTime},"%"))
+			</if>
+		</where>
+	</select>	
+<!-- 修改项目详情 -->
+<update id="updateProjectDetail" parameterType="ProjectInfo">
+update project_info set proj_state=#{projState},start_time=#{startTime},end_time=#{endTime},able_day=DATEDIFF(#{endTime},#{startTime})*8 where proj_id=#{projId}
+</update>
+<!-- 自动补全查项目名称、项目编号、项目负责人 -->
+<select id="findAutoCompleteByProjName" parameterType="ProjectInfo" resultType="String">
+<if test="projName!=null and projName!=''">
+SELECT GROUP_CONCAT(proj_name) FROM `project_info` WHERE `proj_name` LIKE concat("%",#{projName},"%")
+</if>
+<if test="projNum!=null and projNum!=''">
+SELECT GROUP_CONCAT(proj_num) FROM `project_info` WHERE `proj_num` LIKE concat("%",#{projNum},"%")
+</if>
+<if test="projNames!=null and projNames!=''">
+SELECT GROUP_CONCAT(proj_names) FROM(SELECT DISTINCT(proj_names)  FROM(SELECT fn_get_userNameByUserId(proj_chief)AS proj_names,`project_info`.* FROM `project_info`)AS tt WHERE proj_names LIKE CONCAT("%",#{projNames},"%"))AS t
+</if>
+</select>
+
+<!-- 自动补全白名单用户查询 -->
+<select id="findAutoCompleteWhite" parameterType="hashmap" resultType="String">
+SELECT GROUP_CONCAT(user_name) FROM user_info where user_id not in(
+SELECT `proj_chief` FROM `project_info` WHERE proj_id=#{projId}
+UNION
+SELECT proj_chief FROM `proj_team` WHERE proj_id=#{projId}
+UNION
+SELECT user_id FROM `team_member`  WHERE team_id IN(select team_id FROM `proj_team` WHERE proj_id=#{projId})
+union
+select user_id from proj_user_list where proj_id=#{projId}
+) and user_name LIKE concat("%",#{userName},"%")
+</select>
+<!-- 根据用户名查询用户id -->
+<select id="findUserIdByUserName" parameterType="String" resultType="int">
+select user_id from user_info where user_name=#{userName}
+</select>
+<!-- 插入白名单 -->
+<insert id="insertProjectWhite" parameterType="ProjectWhiteList">
+insert into proj_user_list (proj_id,user_id) values(#{projId},#{userId})
+</insert>
+<!-- 配置ProjectWhiteListMap -->
+<resultMap type="ProjectWhiteList" id="ProjectWhiteListMap">
+		<id column="user_list_id" property="userListId" />
+		<result column="user_id" property="userId" />
+		<result column="proj_id" property="projId" />
+		<result column="user_name" property="userName" />
+		</resultMap>
+<!-- 根据项目id查询项目的白名单用户 -->
+<select id="findProjectWhiteListByProjectId" parameterType="int" resultMap="ProjectWhiteListMap">
+SELECT fn_get_userNameByUserId(user_id)AS user_name,proj_user_list.* FROM proj_user_list WHERE proj_id=#{projId}
+</select>
+<!-- 根据项目id删除所有的白名单 -->
+<delete id="deleteProjectWhite" parameterType="int">
+delete from proj_user_list where proj_id=#{projId}
+</delete>
+<!-- 添加修改后的白名单 -->
+<insert id="insertProjectWhiteByUpdate" parameterType="ProjectWhiteList">
+insert into proj_user_list (proj_id,user_id) values(#{projId},#{userId})
+</insert>
+<!-- 自动补全查询动态名称、动态创建人、动态回复人 -->
+<select id="findAutoCompleteByProjectDynamic" parameterType="ProjectDynamic" resultType="String">
+<if test="dynamicDesc!=null and dynamicDesc!=''">
+SELECT GROUP_CONCAT(dynamic_desc) FROM(
+SELECT DISTINCT(dynamic_desc)  FROM(
+SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` WHERE  `is_delete`=0 )AS s 
+WHERE dynamic_desc LIKE CONCAT("%",#{dynamicDesc},"%")) AS b
+</if>
+<if test="userName!=null and userName!=''">
+SELECT GROUP_CONCAT(user_name) FROM(
+SELECT DISTINCT(user_name)  FROM(
+SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` WHERE  `is_delete`=0 )AS s 
+WHERE user_name LIKE CONCAT("%",#{userName},"%")) AS b
+</if>
+<if test="userNames!=null and userNames!=''">
+SELECT GROUP_CONCAT(user_names) FROM(
+SELECT DISTINCT(user_names)  FROM(
+SELECT get_userNameById( `parent_id`)AS user_names,proj_dynamic.*FROM `proj_dynamic` WHERE  `is_delete`=0 )AS s 
+WHERE user_names LIKE CONCAT("%",#{userNames},"%")) AS b
+</if>
+</select>
+<!-- 查询所有的项目组 -->
+<select id="findAllProjectTeam" parameterType="ProjectInfo" resultMap="ProjectTeamMap">
+
+ SELECT team_id,team_name  FROM proj_team WHERE proj_id=#{projId} 
+ UNION
+ SELECT team_id,team_name  FROM proj_team WHERE proj_id IS NULL
+  UNION
+  SELECT team_id,team_name  FROM proj_team WHERE proj_id NOT IN (#{projId}) AND proj_id IN ( SELECT proj_id FROM `project_info` WHERE proj_state&gt;2)
+</select>
+<!-- 查询该项目绑定的所有项目组 -->
+<select id="findAllProjectTeamByProId" parameterType="ProjectInfo" resultMap="ProjectTeamMap">
+
+SELECT * FROM proj_team WHERE proj_id=#{projId}
+</select>
+<!-- 清除该项目的所有项目组 -->
+<update id="deleteProjectTeamToPro" parameterType="ProjectTeam">
+update proj_team set proj_id=null where team_id=#{teamId}
+</update>
+
+<!-- 给项目分配项目组 -->
+<update id="insertProjectTeamToPro" parameterType="ProjectTeam">
+update proj_team set proj_id=#{projId} where team_id=#{teamId}
+</update>
+<!-- 发现可用的项目名称 -->
+<select id="findProjectName" resultMap="getResultMap">
+SELECT get_classId(class_name)AS class_id, class_name FROM `sys_class` WHERE sys_type=2 AND class_name NOT IN(SELECT proj_name FROM `project_info`)
+
+</select>
+<!-- 查询消耗时间 -->
+<select id="findConsumption" parameterType="int" resultType="Double">
+SELECT SUM(able_day *PROCESS/100)AS con_time FROM `proj_task` WHERE  proj_id=#{projId}
+
+</select>
+<!-- 通过项目id查询底下对应的删除动态模块id是否存在 -->
+<select id="findClassId" parameterType="int" resultType="int">
+SELECT COUNT(class_id) FROM `sys_class` WHERE parent_id IN (SELECT class_id FROM `project_info` WHERE proj_id=#{projId}) 
+AND class_name  LIKE CONCAT("%",'动态删除',"%")
+
+</select>
+<!-- 通过项目id查询底下对应的删除动态模块id -->
+<select id="findClassIdss" parameterType="int" resultType="int">
+SELECT class_id FROM `sys_class` WHERE parent_id IN (SELECT class_id FROM `project_info` WHERE proj_id=#{projId}) 
+AND class_name  LIKE CONCAT("%",'动态删除',"%")
+
+</select>
+<!-- 通过项目id查询底下对应的删除版本模块id是否存在  -->
+<select id="findVersionClassId" parameterType="int" resultType="int">
+SELECT COUNT(class_id) FROM `sys_class` WHERE parent_id IN (SELECT class_id FROM `project_info` WHERE proj_id=#{projId}) 
+AND class_name  LIKE CONCAT("%",'版本删除',"%")
+
+</select>
+<!-- 通过项目id查询底下对应的删除版本模块id -->
+<select id="findVersionClassIdss" parameterType="int" resultType="int">
+SELECT class_id FROM `sys_class` WHERE parent_id IN (SELECT class_id FROM `project_info` WHERE proj_id=#{projId}) 
+AND class_name  LIKE CONCAT("%",'版本删除',"%")
+
+</select>
+<!-- 查询项目版本 -->
+	<select id="findAllProjectVession" parameterType="hashmap" resultMap="ProjectVersionMap">
+		SELECT get_userName(create_by)AS user_name,proj_version.* FROM `proj_version`WHERE proj_id=#{projectVersion.projId}
+		and is_delete=0
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 查询项目版本数-->	
+	<select id="findAllProjectVessionNum" parameterType="ProjectVersion" resultType="int">
+		SELECT count(*) FROM (SELECT get_userName(create_by)AS user_name,proj_version.* FROM `proj_version`WHERE proj_id=#{projId} and is_delete=0) as t
+	</select>
+<!-- 修改版本信息 -->
+<update id="updateProjVersin" parameterType="ProjectVersion">
+UPDATE `proj_version` SET version_desc=#{versionDesc} WHERE version_id=#{versionId}
+</update>
+<!-- 验证版本号 -->
+<select id="findVersionNum" parameterType="ProjectVersion" resultType="String">
+ SELECT  version_num FROM `proj_version` WHERE version_id IN(SELECT MAX(version_id)  FROM `proj_version` WHERE proj_id =#{projId} and is_delete=0)
+</select>
+<!-- 新建版本 -->
+<insert id="insertVersion" parameterType="ProjectVersion">
+insert into `proj_version` (proj_id,version_num,version_desc,create_time,create_by,is_delete) values
+(#{projId},#{versionNum},#{versionDesc},now(),#{createBy},0)
+</insert>
+	<!-- 查询当前登录这个人所拥有的权限（他所能看到的项目对应的内容） -->
+	<!-- 管理员admin登录，查询所有项目信息 -->
+	<select id="findAllPro" parameterType="hashMap" resultMap="projectInfoMap">
+		SELECT * FROM project_info 
+		<where>
+		   <if test="proj_id>0">
+		     and proj_id=#{projectInfo.projId}
+		   </if>
+		</where>
+	</select>
+    <!-- 项目经理，项目组长，研发人员进来都是掉此接口查询到对应的项目信息 -->
+    <select id="findOneselfPro" parameterType="hashMap" resultMap="projectInfoMap">
+	select pro.* from (SELECT * FROM project_info   WHERE proj_chief=#{userId}
+         UNION
+                SELECT * FROM project_info WHERE proj_id  IN(SELECT proj_id FROM  proj_team  WHERE proj_chief = #{userId})   
+         UNION
+                SELECT * FROM project_info WHERE proj_id IN( SELECT proj_id FROM proj_team WHERE  team_id IN(SELECT team_id FROM team_member  WHERE user_id=#{userId}))
+         UNION
+                SELECT * FROM  project_info WHERE vistor_type='0'
+         UNION
+                SELECT * FROM project_info WHERE proj_id  IN(SELECT proj_id  FROM proj_user_list WHERE user_id=#{userId})) as pro
+	   <where>
+	      <if test="proj_id>0">
+		     and pro.proj_id=#{projectInfo.projId}
+		   </if>
+	   </where>
+	</select>
+<!-- 根据projName模糊查询出对应的projIds（可能多个）   -->
+	   <select id="projIdsByProjName" parameterType="String" resultType="String">
+		select group_concat(proj_id)
+		from project_info where proj_name like concat("%",#{projName},"%")
+	</select>
+
+</mapper>

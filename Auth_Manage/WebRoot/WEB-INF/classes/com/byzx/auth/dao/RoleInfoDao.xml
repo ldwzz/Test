@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.RoleInfoDao">
+	<!--配置resultMap -->
+	<resultMap type="RoleInfo" id="getRolesMap">
+		<id column="role_id" property="roleId" />
+		<result column="role_name" property="roleName" />
+		<result column="role_desc" property="roleDesc" />
+		<result column="role_code" property="roleCode" />
+		<result column="role_state" property="roleState" />
+		<result column="create_by" property="createBy" />
+		<result column="update_by" property="updateBy" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+	<!-- 查询所有角色信息 -->
+	<select id="getAllRoles" resultMap="getRolesMap">
+		SELECT * FROM `role` WHERE
+		`role_state`=1
+	</select>
+	<!-- 通过userId查询角色Id，返回字符串 -->
+	<select id="getRoleIdsByUserId" parameterType="int" resultType="string">
+		SELECT GROUP_CONCAT(`role_id`) FROM `user_role` WHERE
+		`user_id`=#{userId}
+	</select>
+	<!-- 通过用户Id删除角色 -->
+	<delete id="deleteRolesByUserId" parameterType="int">
+		DELETE FROM
+		`user_role` WHERE `user_id`=#{userId}
+	</delete>
+	<!-- 通过用户Id，角色id给用户分配角色 -->
+	<insert id="insertRolesByUser" parameterType="hashmap">
+		INSERT INTO
+		`user_role`(`role_id`,`user_id`) VALUES(#{roleId},#{userId})
+	</insert>
+	<select id="getRolesNum" resultType="int" parameterType="RoleInfo">
+		SELECT
+		COUNT(*) FROM `role`
+		<where>
+			<if test="roleState!=null and roleState!=''">
+				and role_state=#{roleState}
+			</if>
+			<if test="roleName!=null and roleName!=''">
+				and role_name like concat(#{roleName},"%")
+			</if>
+		</where>
+	</select>
+	<!-- 分页查询角色信息 -->
+	<select id="findAllRoles" parameterType="hashmap" resultMap="getRolesMap">
+		SELECT * FROM `role`
+		<where>
+			<if test="role.roleState!=null and role.roleState!=''">
+				and role_state=#{role.roleState}
+			</if>
+			<if test="role.roleName!=null and role.roleName!=''">
+				and role_name like concat(#{role.roleName},"%")
+			</if>
+		</where>
+		order by `role_id` desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	<!-- 角色code唯一性校验 -->
+	<select id="addRoleVerify" parameterType="RoleInfo" resultType="int">
+		SELECT COUNT(*) FROM `role` WHERE `role_code`=#{roleCode}
+	</select>
+	<!-- 添加角色 -->
+	<insert id="addRoleInfo" parameterType="RoleInfo">
+		INSERT INTO
+		`role`(`role_name`,`role_desc`,`role_code`)
+		VALUES(#{roleName},#{roleDesc},#{roleCode})
+	</insert>
+	<!-- 角色禁用/禁用 -->
+	<update id="updateRoleState" parameterType="RoleInfo">
+		UPDATE `role` SET
+		`role_state`=#{roleState} where role_id=#{roleId}
+	</update>
+	<!-- 通过groupId查询角色Id，返回字符串 -->
+	<select id="getGroupRoles" parameterType="int" resultType="string">
+		SELECT GROUP_CONCAT(`role_id`) FROM `group_role` WHERE
+		`group_id`=#{groupId}
+	</select>
+	<!-- 通过用户组Id删除角色 -->
+	<delete id="deleteRolesByGroupId" parameterType="int">
+		DELETE FROM
+		`group_role` WHERE `group_id`=#{groupId}
+	</delete>
+	<!-- 通过用户组Id，角色id给用户分配角色Fs -->
+	<insert id="insertRolesByGroup" parameterType="hashmap">
+		INSERT INTO
+		`group_role`(`group_id`,`role_id`) VALUES(#{groupId},#{roleId})
+	</insert>
+</mapper>

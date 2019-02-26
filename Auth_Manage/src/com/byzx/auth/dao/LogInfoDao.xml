@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.LogInfoDao">
+	<!--实现po类映射 -->
+	<resultMap type="LogInfo" id="getLogInfoMap">
+		<id column="log_id" property="logId" />
+		<result column="ip_address" property="ipAddress" />
+		<result column="url" property="url" />
+		<result column="proj_id" property="projId" />
+		<result column="log_type" property="logType" />
+		<result column="log_info" property="logInfo" />
+		<result column="exception" property="exception" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+	</resultMap>
+	
+	<!-- admin进来可以看到所有的日志 -->
+	    <select id="findLogInfo1" parameterType="hashMap" resultMap="getLogInfoMap">
+            SELECT * FROM log_info 
+		<where>
+		   <if test="logInfo.userIds!=null and logInfo.userIds!=''">
+		    and create_by in (#{logInfo.userIds})
+		  </if>
+		
+
+		 <if test="logInfo.projId >0">
+		    and proj_id =#{logInfo.projId}
+		 </if>
+		
+		<if test="logInfo.logInfo!=null and logInfo.logInfo!=''">
+		    and log_info like concat("%",#{logInfo.logInfo},"%")
+		 </if>
+		
+		<if test="logInfo.exception!=null and logInfo.exception!=''">
+		    and log_info like concat("%",#{logInfo.exception},"%")
+		 </if>
+		
+		
+		<if test="logInfo.ipAddress!=null and logInfo.ipAddress!=''">
+		    and ip_address like concat("%",#{logInfo.ipAddress},"%")
+		 </if>
+		
+		<if test="logInfo.createStartTime!=null and logInfo.createStartTime!=''">
+		     and (create_time like concat("%",#{logInfo.createStartTime},"%") or create_time &gt;#{logInfo.createStartTime})
+		</if>
+		
+		<if test="logInfo.createEndTime !=null and logInfo.createEndTime!=''" >
+		     and (create_time like concat("%",#{logInfo.createEndTime},"%") or create_time &lt; #{logInfo.createEndTime})
+		</if>
+		</where>
+		 order by create_time desc limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	
+	<!-- admin进来查询其对应的日志的总条数 -->
+          <select id="findLogInfoSum1" parameterType="hashMap" resultType="int">
+			     SELECT count(*) FROM log_info  
+		<where>
+		  <if test="logInfo.userIds!=null and logInfo.userIds!=''">
+		    and create_by in (#{logInfo.userIds})
+		  </if>
+		
+		
+		
+		   <if test="logInfo.projId >0">
+		    and proj_id =#{logInfo.projId}
+		 </if>
+		
+		<if test="logInfo.logInfo!=null and logInfo.logInfo!=''">
+		    and log_info like concat("%",#{logInfo.logInfo},"%")
+		 </if>
+		
+		<if test="logInfo.exception!=null and logInfo.exception!=''">
+		    and log_info like concat("%",#{logInfo.exception},"%")
+		 </if>
+		
+		
+		<if test="logInfo.ipAddress!=null and logInfo.ipAddress!=''">
+		    and ip_address like concat("%",#{logInfo.ipAddress},"%")
+		 </if>
+		
+		<if test="logInfo.createStartTime!=null and logInfo.createStartTime!=''">
+		     and (create_time like concat("%",#{logInfo.createStartTime},"%") or create_time &gt;#{logInfo.createStartTime})
+		</if>
+		
+		<if test="logInfo.createEndTime !=null and logInfo.createEndTime!=''" >
+		     and (create_time like concat("%",#{logInfo.createEndTime},"%") or create_time &lt; #{logInfo.createEndTime})
+		</if>
+		</where>
+	</select>
+	
+	
+	
+	
+	
+	
+	<!-- 根据不同人(项目经理 组长 成员)登录进来查询对应的日志信息不同之分页 -->
+	<select id="findLogInfo2" parameterType="hashMap" resultMap="getLogInfoMap">
+		      SELECT rizhi.* FROM (SELECT distinct * FROM `log_info` WHERE `create_by`=#{userId} 
+    or  `proj_id`in(SELECT GROUP_CONCAT(pro.proj_id) FROM (SELECT * FROM project_info   WHERE proj_chief=#{userId}
+         UNION
+                SELECT * FROM project_info WHERE proj_id  IN(SELECT proj_id FROM  proj_team  WHERE proj_chief = #{userId})   
+         UNION
+                SELECT * FROM project_info WHERE proj_id IN( SELECT proj_id FROM proj_team WHERE  team_id IN(SELECT team_id FROM team_member  WHERE user_id=#{userId}))
+         UNION
+                SELECT * FROM  project_info WHERE vistor_type='0'
+         UNION
+                SELECT * FROM project_info WHERE proj_id  IN(SELECT proj_id  FROM proj_user_list WHERE user_id=#{userId})) as pro)) as rizhi
+		<where>
+		   <if test="logInfo.userIds!=null and logInfo.userIds!=''">
+		    and create_by in (#{logInfo.userIds})
+		  </if>
+
+		  <if test="logInfo.projId >0">
+		    and proj_id =#{logInfo.projId}
+		 </if>
+		
+		<if test="logInfo.logInfo!=null and logInfo.logInfo!=''">
+		    and rizhi.log_info like concat("%",#{logInfo.logInfo},"%")
+		 </if>
+		
+		<if test="logInfo.exception!=null and logInfo.exception!=''">
+		    and rizhi.log_info like concat("%",#{logInfo.exception},"%")
+		 </if>
+		
+		
+		<if test="logInfo.ipAddress!=null and logInfo.ipAddress!=''">
+		    and rizhi.ip_address like concat("%",#{logInfo.ipAddress},"%")
+		 </if>
+		
+		<if test="logInfo.createStartTime!=null and logInfo.createStartTime!=''">
+		     and (rizhi.create_time like concat("%",#{logInfo.createStartTime},"%") or rizhi.create_time &gt;#{logInfo.createStartTime})
+		</if>
+		
+		<if test="logInfo.createEndTime !=null and logInfo.createEndTime!=''" >
+		     and (rizhi.create_time like concat("%",#{logInfo.createEndTime},"%") or rizhi.create_time &lt; #{logInfo.createEndTime})
+		</if>
+		</where>
+		 order by rizhi.create_time desc limit #{page.pageIndex},#{page.pageNum}
+	</select>
+
+<!-- 根据不同的人（项目经理 组长 成员）进来查询对应的数据总条数 -->
+    <select id="findLogInfoSum2" parameterType="hashMap" resultType="int">
+			      SELECT count(*) FROM (SELECT distinct * FROM `log_info` WHERE `create_by`=#{userId} 
+    or  `proj_id`in (SELECT GROUP_CONCAT(pro.proj_id) FROM (SELECT * FROM project_info   WHERE proj_chief=#{userId}
+         UNION
+                SELECT * FROM project_info WHERE proj_id  IN(SELECT proj_id FROM  proj_team  WHERE proj_chief = #{userId})   
+         UNION
+                SELECT * FROM project_info WHERE proj_id IN( SELECT proj_id FROM proj_team WHERE  team_id IN(SELECT team_id FROM team_member  WHERE user_id=#{userId}))
+         UNION
+                SELECT * FROM  project_info WHERE vistor_type='0'
+         UNION
+                SELECT * FROM project_info WHERE proj_id  IN(SELECT proj_id  FROM proj_user_list WHERE user_id=#{userId})) as pro)) as rizhi
+		<where>
+		    <if test="logInfo.userIds!=null and logInfo.userIds!=''">
+		    and create_by in (#{logInfo.userIds})
+		   </if>
+		  
+		  
+		  <if test="logInfo.projId >0">
+		    and proj_id =#{logInfo.projId}
+		 </if>
+		
+		<if test="logInfo.logInfo!=null and logInfo.logInfo!=''">
+		    and rizhi.log_info like concat("%",#{logInfo.logInfo},"%")
+		 </if>
+		
+		<if test="logInfo.exception!=null and logInfo.exception!=''">
+		    and rizhi.log_info like concat("%",#{logInfo.exception},"%")
+		 </if>
+		
+		
+		<if test="logInfo.ipAddress!=null and logInfo.ipAddress!=''">
+		    and rizhi.ip_address like concat("%",#{logInfo.ipAddress},"%")
+		 </if>
+		
+		<if test="logInfo.createStartTime!=null and logInfo.createStartTime!=''">
+		     and (rizhi.create_time like concat("%",#{logInfo.createStartTime},"%") or rizhi.create_time &gt;#{logInfo.createStartTime})
+		</if>
+		
+		<if test="logInfo.createEndTime !=null and logInfo.createEndTime!=''" >
+		     and (rizhi.create_time like concat("%",#{logInfo.createEndTime},"%") or rizhi.create_time &lt; #{logInfo.createEndTime})
+		</if>
+		</where>
+	</select>
+<!-- 新增一条日志信息 -->
+  <insert id="append" parameterType="LogInfo" >
+   INSERT INTO log_info (ip_address,url,proj_id,log_type,log_info,exception,create_time,create_by) VALUES (#{ipAddress},#{url},#{projId},#{logType},#{logInfo},#{exception},now(),#{createBy})
+  </insert>
+<!-- 导出日志的同时删除该日志 -->
+   <delete id="clearLog" parameterType="int">
+     delete from log_info where log_id=#{logId}
+  </delete>
+
+
+<!-- 根据dynamic_id查询proj_id -->
+   <select id="findProjIdByDynamicId" parameterType="int" resultType="int">
+    SELECT proj_id FROM   proj_dynamic WHERE dynamic_id=#{dynamicId}
+   </select>  
+<!-- 根据task_id查询proj_id -->
+   <select id="findProjIdByTaskId" parameterType="int" resultType="int">
+    SELECT proj_id FROM proj_task  WHERE  task_id=#{task_id}
+   </select>
+   <!-- 根据dynamic_id查询proj_id -->
+   <select id="findProjIdByVersionId" parameterType="int" resultType="int">
+   SELECT proj_id  FROM  proj_version WHERE version_id=#{versionId}
+   </select>  
+<!-- 根据task_id查询proj_id -->
+   <select id="findProjIdByBugId" parameterType="int" resultType="int">
+   SELECT proj_id  FROM  bug_info WHERE bug_id=#{bugId}
+   </select>
+
+
+
+</mapper>

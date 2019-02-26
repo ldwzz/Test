@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.AuthInfoDao">
+	<!-- 配置resultMap -->
+	<resultMap type="AuthInfo" id="findAllAuthMap">
+		<id column="auth_id" property="authId" />
+		<result column="parent_id" property="parentId" />
+		<result column="auth_name" property="authName" />
+		<result column="auth_grade" property="authGrade" />
+		<result column="auth_url" property="authUrl" />
+		<result column="auth_desc" property="authDesc" />
+		<result column="auth_type" property="authType" />
+		<result column="auth_state" property="authState" />
+		<result column="auth_code" property="authCode" />
+	</resultMap>
+	<!-- 查询所有权限信息 -->
+	<select id="findAllAuth" resultMap="findAllAuthMap"
+		parameterType="AuthInfo">
+		SELECT * FROM `auth_info`
+		<where>
+			<if test="authState!=null and authState!=''">
+				auth_state=#{authState}
+			</if>
+		</where>
+	</select>
+	<!-- 通过角色Id查询权限Id -->
+	<select id="findAuthByroleId" parameterType="int" resultType="string">
+		SELECT GROUP_CONCAT(`auth_id`) FROM `role_auth` WHERE
+		`role_id`=#{roleId}
+	</select>
+	<!-- 通过角色Id删除权限 -->
+	<delete id="deleteAuthInfo" parameterType="int">
+		DELETE FROM
+		`role_auth` WHERE `role_id`=#{authId}
+	</delete>
+	<!-- 通过角色id,权限id添加权限 -->
+	<insert id="addAuthByRole" parameterType="hashmap">
+		INSERT INTO
+		`role_auth`(`role_id`,`auth_id`) VALUES(#{roleId},#{authId})
+	</insert>
+	<!-- authCode唯一校验 -->
+	<select id="authCodeVerify" parameterType="string" resultType="int">
+		SELECT COUNT(*) FROM `auth_info` WHERE `auth_code`=#{authCode}
+	</select>
+	<!-- 添加权限信息 -->
+	<insert id="insertAuth" parameterType="AuthInfo">
+		INSERT INTO
+		`auth_info`(`parent_id`,`auth_name`,`auth_desc`,`auth_type`,`auth_url`,`auth_code`)
+		VALUES(#{parentId},#{authName},#{authDesc},#{authType},#{authUrl},#{authCode})
+	</insert>
+	<!-- 修改权限信息 -->
+	<update id="updateAuth" parameterType="AuthInfo">
+		UPDATE `auth_info`
+		<set>
+			<if test="authDesc!=null and authDesc!=''">
+				auth_desc=#{authDesc},
+			</if>
+			<if test="authName!=null and authName!=''">
+				auth_name=#{authName},
+			</if>
+			<if test="authUrl!=null and authUrl!=''">
+				auth_url=#{authUrl}
+			</if>
+			<if test="authState!=null and authState!=''">
+				auth_state=#{authState}
+			</if>
+		</set>
+		where auth_id=#{authId}
+	</update>
+	<!-- 通过权限Id查询是否权限在使用 -->
+	<select id="selectAuth" parameterType="AuthInfo" resultMap="findAllAuthMap">
+		SELECT `auth_id` FROM `role_auth` WHERE `auth_id`=#{authId}
+		UNION
+		SELECT `auth_id` FROM `user_auth` WHERE `auth_id`=#{authId}
+	</select>
+	<!-- 通过用户Id查询权限Id -->
+	<select id="findAuthByUserId" parameterType="int" resultType="string">
+		SELECT GROUP_CONCAT(`auth_id`) FROM `user_auth` WHERE
+		user_id=#{userId}
+	</select>
+	<!-- 通过用户Id删除user_auth权限 -->
+	<delete id="deleteUserAuth" parameterType="int">
+		DELETE FROM
+		`user_auth` WHERE `user_id`=#{userId}
+	</delete>
+	<!-- 通过用户id,权限id给用户添加权限（user_auth） -->
+	<insert id="addAuthByUser" parameterType="hashmap">
+		INSERT INTO
+		`user_auth`(`user_id`,`auth_id`) VALUES(#{userId},#{authId})
+	</insert>
+	<!-- 通过角色Id数组查询权限Id -->
+	<select id="findAuthByroles" parameterType="hashmap" resultType="string">
+		SELECT GROUP_CONCAT(`auth_id`) FROM `role_auth`
+		<where>
+			<if test="roleId!=null">
+				role_id
+				<foreach collection="roleId" item="roleid" open=" in("
+					close=")" separator=",">
+					#{roleid}
+				</foreach>
+			</if>
+		</where>
+	</select>
+	<!-- 查询子权限 -->
+	<select id="getChildList" parameterType="AuthInfo" resultMap="findAllAuthMap">
+		SELECT * FROM `auth_info` WHERE `parent_id`=#{authId}
+	</select>
+	<!-- 删除子权限 -->
+	<update id="deleteChildList" parameterType="java.util.Arrays">
+		update `auth_info` set `auth_state`=0 where `auth_id` IN(
+		<foreach collection="array" close=")" item="authid" separator=",">
+			#{authid}
+		</foreach>
+	</update>
+	<!-- 查询父权限 -->
+	<select id="findParent" parameterType="AuthInfo" resultMap="findAllAuthMap">
+		SELECT * FROM `auth_info` WHERE `auth_id`=(SELECT `parent_id` FROM
+		`auth_info` WHERE `auth_id`=#{authId})
+	</select>
+	<!-- 恢复子权限 -->
+	<update id="recoverChildList" parameterType="java.util.Arrays">
+		update `auth_info` set `auth_state`=1 where `auth_id` IN(
+		<foreach collection="array" close=")" item="authid" separator=",">
+			#{authid}
+		</foreach>
+	</update>
+</mapper>

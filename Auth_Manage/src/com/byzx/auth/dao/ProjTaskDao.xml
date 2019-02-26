@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.ProjTaskDao">
+	<!--配置resultMap -->
+	<resultMap type="ProjTask" id="getProjTaskMap">
+		<id column="task_id" property="taskId" />
+		<result column="task_name" property="taskName" />
+		<result column="proj_id" property="projId" />
+		<result column="task_desc" property="taskDesc" />
+		<result column="excutor" property="excutor" />
+		<result column="task_state" property="taskState" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="class_id" property="classId" />
+		<result column="able_day" property="ableDay" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="plan_time" property="planTime" />
+		<result column="finish_time" property="finishTime" />
+		<result column="process" property="process" />
+		<result column="is_delete" property="isDelete" />
+		<result column="remark" property="remark" />
+		<result column="excutor_name" property="excutorName" />
+		<result column="create_by_name" property="createByName" />
+		<result column="class_id_name" property="classIdName" />
+	</resultMap>
+	<!-- 查询所有项目任务 -->
+	<select id="findprojTask" parameterType="hashmap" resultMap="getProjTaskMap">
+
+		SELECT * FROM (SELECT pt.*,ui.user_name excutor_name,un.nick_name
+		create_by_name,sc.`class_name` class_id_name
+		FROM proj_task
+		pt,user_info ui,sys_class sc,user_info un
+		WHERE pt.excutor=ui.user_id
+		AND pt.create_by=un.user_id
+		AND pt.class_id=sc.class_id
+		AND
+		pt.is_delete=0
+		AND pt.proj_id=#{projTask.projId}) ss
+		<where>
+			<if test="projTask.taskName!=null and projTask.taskName!=''">
+				and ss.task_name LIKE concat(#{projTask.taskName},"%")
+			</if>
+			<if test="projTask.excutorName!=null and projTask.excutorName!=''">
+				and ss.excutor_name LIKE concat(#{projTask.excutorName},"%")
+			</if>
+			<if test="projTask.classIdName!=null and projTask.classIdName!=''">
+				and ss.class_id_name LIKE concat(#{projTask.classIdName},"%")
+			</if>
+		</where>
+		limit
+		#{page.pageIndex},#{page.pageNum}
+
+	</select>
+	<!-- 查询总条数 -->
+	<select id="findprojTaskcount" parameterType="projTask"
+		resultType="int">
+		SELECT COUNT(*) FROM (SELECT pt.*,ui.user_name excutor_name,un.nick_name
+		create_by_name,sc.`class_name` class_id_name
+		FROM proj_task
+		pt,user_info ui,sys_class sc,user_info un
+		WHERE pt.excutor=ui.user_id
+		AND pt.create_by=un.user_id
+		AND pt.class_id=sc.class_id
+		AND
+		pt.is_delete=0
+		AND pt.proj_id=#{projId}) ss
+		<where>
+			`proj_id`=#{projId}
+			<if test="taskName!=null and taskName!=''">
+				and ss.task_name LIKE concat(#{taskName},"%")
+			</if>
+			<if test="excutorName!=null and excutorName!=''">
+				and ss.excutor_name LIKE concat(#{excutorName},"%")
+			</if>
+			<if test="classIdName!=null and classIdName!=''">
+				and ss.class_id_name LIKE concat(#{classIdName},"%")
+			</if>
+		</where>
+	</select>
+	<!-- 增加任务 -->
+	<insert id="insetProjTask" parameterType="projTask">
+		INSERT INTO
+		`proj_task`(`proj_id`,
+		`task_name`,`task_desc`,`excutor`,`task_state`,`create_time`,`create_by`,
+		`class_id`,`is_delete`,remark
+		)
+		VALUES
+		(#{projId},#{taskName},#{taskDesc},#{excutor},0,now(),#{createBy},#{classId},0,#{remark})
+
+	</insert>
+	<!-- 查询可以执行的人 -->
+	<select id="findProjState" parameterType="int" resultType="userInfo">
+		<!-- SELECT `user_id` userID ,`user_name` userName FROM `user_info` WHERE 
+			user_id IN (SELECT DISTINCT (pk.`excutor`) FROM`proj_task` pk,`proj_team` 
+			pm,`team_member` tr WHERE pk.`proj_id` = pm.`proj_id` AND pm.team_id=tr.team_id 
+			AND excutor NOT IN (SELECT `excutor` FROM `proj_task` WHERE `task_state` 
+			IN (1,0))) -->
+
+		SELECT `user_id` userID,FN_GET_PROJ_CHIEF(user_id)userName FROM
+		`team_member` WHERE `team_id`
+		IN(SELECT `team_id` FROM `proj_team`
+		WHERE `proj_id`=#{projId} AND `team_code`
+		LIKE '%projectTeam%') AND
+		`user_id` IN
+		(SELECT `user_id` FROM `user_role` WHERE `role_id` IN
+		(SELECT `role_id` FROM `role` WHERE `role_code`='project_member'))
+
+	</select>
+	<!-- 所属模块 -->
+	<select id="findClass" parameterType="int" resultType="sysClass">
+		<!-- SELECT -->
+		<!-- `class_id` classId,`class_name` className FROM `sys_class` WHERE -->
+		<!-- `parent_id` IN( -->
+		<!-- SELECT `proj_id`FROM `project_info`WHERE `proj_id` IN( -->
+		<!-- SELECT `proj_id`FROM`proj_task` WHERE `class_id` =#{classId} -->
+		<!-- )) -->
+		SELECT `class_id` classId,`class_name` className FROM `sys_class`WHERE
+		`parent_id` IN(
+		SELECT `class_id`FROM
+		`project_info`WHERE`proj_id`=#{projId}
+		)
+	</select>
+	<!-- 修改项目任务 -->
+	<update id="updateProjTask" parameterType="projTask">
+		UPDATE `proj_task` SET
+		`task_state`=#{taskState},`start_time`=#{startTime},`end_time`=#{endTime},
+		`plan_time`=#{planTime},`finish_time`=#{finishTime},`process`=#{process},
+		`able_day`=(DATEDIFF(#{endTime},#{startTime})*8)
+		WHERE
+		`task_id`=#{taskId}
+	</update>
+	<!-- 查询快过期任务 -->
+	<select id="selectTasksNum" parameterType="hashmap" resultType="int">
+		<if test="roleCode=='project_member'">
+			SELECT count(*) FROM `proj_task` WHERE
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+			AND `excutor`=#{userId}
+		</if>
+		<if test="roleCode=='project_leader'">
+			SELECT count(*) FROM `proj_task` WHERE `proj_id` IN(SELECT
+			`proj_id` FROM
+			`proj_team` WHERE `proj_chief`=#{userId}) AND
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+		</if>
+		<if test="roleCode=='project_manager'">
+			SELECT count(*) FROM `proj_task` WHERE `proj_id` IN(SELECT
+			`proj_id` FROM `project_info` WHERE `create_by`=#{userId}) AND
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+		</if>
+	</select>
+	<select id="selectProjId" parameterType="int" resultType="string">
+		SELECT
+		GROUP_CONCAT(proj_id) FROM
+		(SELECT proj_id FROM `proj_team` WHERE
+		`team_id` IN(SELECT team_id FROM
+		`team_member` WHERE
+		`user_id`=#{userId})
+		UNION
+		SELECT proj_id FROM
+		`proj_team` WHERE
+		`proj_chief`=#{userId}
+		UNION
+		SELECT proj_id FROM
+		`project_info` WHERE
+		`create_by`=#{userId})projid
+	</select>
+	<select id="selectTasks" parameterType="hashmap" resultMap="getProjTaskMap">
+		<if test="roleCode=='project_member'">
+			SELECT `proj_task`.*,FN_GET_PROJ_CHIEF(excutor) excutorName,FN_GET_PROJ_NAME_BY_CLASSID(class_id) classIdName FROM `proj_task` WHERE
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+			AND `excutor`=#{userId}
+		</if>
+		<if test="roleCode=='project_leader'">
+			SELECT `proj_task`.*,FN_GET_PROJ_CHIEF(excutor) excutorName,FN_GET_PROJ_NAME_BY_CLASSID(class_id) classIdName FROM `proj_task` WHERE `proj_id` IN(SELECT
+			`proj_id` FROM `proj_team` WHERE `proj_chief`=#{userId}) AND
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+		</if>
+		<if test="roleCode=='project_manager'">
+			SELECT `proj_task`.*,FN_GET_PROJ_CHIEF(excutor) excutorName,FN_GET_PROJ_NAME_BY_CLASSID(class_id) classIdName FROM `proj_task` WHERE `proj_id` IN(SELECT
+			`proj_id` FROM `project_info` WHERE `create_by`=#{userId}) AND
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+		</if>
+		<where>
+			<if test="projTask.taskName!=null and projTask.taskName!=''">
+				and task_name LIKE concat(#{projTask.taskName},"%")
+			</if>
+			<if test="projTask.excutorName!=null and projTask.excutorName!=''">
+				and excutor LIKE concat(#{projTask.excutorName},"%")
+			</if>
+			<if test="projTask.classIdName!=null and projTask.classIdName!=''">
+				and class_d LIKE concat(#{projTask.classIdName},"%")
+			</if>
+		</where>
+		limit
+		#{page.pageIndex},#{page.pageNum}
+	</select>
+	<select id="selectTasksNums" parameterType="hashmap" resultType="int">
+		<if test="roleCode=='project_member'">
+			SELECT count(*) from (select `proj_task`.*,FN_GET_PROJ_CHIEF(excutor) excutorName,FN_GET_PROJ_NAME_BY_CLASSID(class_id) classIdName  FROM `proj_task` WHERE
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400
+			AND `excutor`=#{userId}) proj
+		</if>
+		<if test="roleCode=='project_leader'">
+			SELECT count(*) from (select `proj_task`.*,FN_GET_PROJ_CHIEF(excutor) excutorName,FN_GET_PROJ_NAME_BY_CLASSID(class_id) classIdName FROM `proj_task` WHERE `proj_id` IN(SELECT
+			`proj_id` FROM `proj_team` WHERE `proj_chief`=#{userId}) AND
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400)proj
+		</if>
+		<if test="roleCode=='project_manager'">
+			SELECT count(*)  from (select `proj_task`.*,FN_GET_PROJ_CHIEF(excutor) excutorName,FN_GET_PROJ_NAME_BY_CLASSID(class_id) classIdName FROM `proj_task` WHERE `proj_id` IN(SELECT
+			`proj_id` FROM `project_info` WHERE `create_by`=#{userId}) AND
+			TIMESTAMPDIFF(SECOND,NOW(),end_time)&lt;86400)proj
+		</if>
+		<where>
+			<if test="projTask.taskName!=null and projTask.taskName!=''">
+				and task_name LIKE concat(#{projTask.taskName},"%")
+			</if>
+			<if test="projTask.excutorName!=null and projTask.excutorName!=''">
+				and excutor LIKE concat(#{projTask.excutorName},"%")
+			</if>
+			<if test="projTask.classIdName!=null and projTask.classIdName!=''">
+				and class_d LIKE concat(#{projTask.classIdName},"%")
+			</if>
+		</where>
+	</select>
+</mapper>

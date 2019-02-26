@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.ProjectTeamDao">
+<!--配置项目ResultMap -->
+	<resultMap type="ProjectInfo" id="projectInfoMap">
+		<id column="proj_id" property="projId" />
+		<result column="class_id" property="classId" />
+		<result column="proj_name" property="projName" />
+		<result column="proj_num" property="projNum" />
+		<result column="proj_desc" property="projDesc" />
+		<result column="vistor_type" property="vistorType" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="able_day" property="ableDay" />
+		<result column="proj_state" property="projState" />
+		<result column="proj_chief" property="projChief" />
+		<result column="remark" property="remark" />
+		<result column="proj_names" property="projNames" />
+		
+	</resultMap>
+<!--配置项目ResultMap -->
+	<resultMap type="ProjectTeam" id="ProjectTeamMap">
+		<id column="team_id" property="teamId" />
+		<result column="proj_id" property="projId" />
+		<result column="team_code" property="teamCode" />
+		<result column="team_name" property="teamName" />
+		<result column="team_desc" property="teamDesc" />
+		<result column="proj_chief" property="projChief" />
+		<result column="proj_name" property="projName" />
+		<result column="user_name" property="userName" />
+		</resultMap>
+<!-- 查询所有项目组信息 -->
+	<select id="findAllProjectTeam" parameterType="hashmap" resultMap="ProjectTeamMap">
+   select * from(SELECT get_projectName(proj_id)AS proj_name,get_userName(proj_chief)AS user_name, `proj_team`.* FROM `proj_team`) as t		
+      <where>
+			<if test="projectTeam.teamCode!=null and projectTeam.teamCode!=''">
+				and team_code like concat("%",#{projectTeam.teamCode},"%")
+			</if>
+			<if test="projectTeam.teamName!=null and projectTeam.teamName!=''">
+				and team_name like concat("%",#{projectTeam.teamName},"%")
+			</if>
+			<if test="projectTeam.projName!=null and projectTeam.projName!=''">
+				and proj_name like concat("%",#{projectTeam.projName},"%")
+			</if>
+			<if test="projectTeam.userName!=null and projectTeam.userName!=''">
+				and user_name like concat("%",#{projectTeam.userName},"%")
+			</if>
+			
+		</where>
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 查询项目组总数-->	
+	<select id="findAllProjectTeamNum" parameterType="ProjectTeam" resultType="int">
+		SELECT count(*) FROM ( SELECT get_projectName(proj_id)AS proj_name,get_userName(proj_chief)AS user_name, `proj_team`.* FROM `proj_team`) as t	
+		<where>
+		    <if test="teamCode!=null and teamCode!=''">
+				and team_code like concat("%",#{teamCode},"%")
+			</if>
+			<if test="teamName!=null and teamName!=''">
+				and team_name like concat("%",#{teamName},"%")
+			</if>
+			<if test="projName!=null and projName!=''">
+				and proj_name like concat("%",#{projName},"%")
+			</if>
+			<if test="userName!=null and userName!=''">
+				and user_name like concat("%",#{userName},"%")
+			</if>	
+		</where>
+	</select>
+<!-- 项目经理查询所有项目组信息 -->
+	<select id="findSomeProjectTeam" parameterType="hashmap" resultMap="ProjectTeamMap">
+   SELECT * FROM(SELECT get_projectName(proj_id)AS proj_name,get_userName(proj_chief)AS user_name, `proj_team`.* FROM `proj_team`
+ WHERE proj_id IN(SELECT proj_id FROM `project_info` WHERE create_by =#{userInfo.userId}) ) AS t
+      <where>
+			<if test="projectTeam.teamCode!=null and projectTeam.teamCode!=''">
+				and team_code like concat("%",#{projectTeam.teamCode},"%")
+			</if>
+			<if test="projectTeam.teamName!=null and projectTeam.teamName!=''">
+				and team_name like concat("%",#{projectTeam.teamName},"%")
+			</if>
+			<if test="projectTeam.projName!=null and projectTeam.projName!=''">
+				and proj_name like concat("%",#{projectTeam.projName},"%")
+			</if>
+			<if test="projectTeam.userName!=null and projectTeam.userName!=''">
+				and user_name like concat("%",#{projectTeam.userName},"%")
+			</if>
+			
+		</where>
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 项目经理查询项目组总数-->	
+	<select id="findSomeProjectTeamNum" parameterType="hashmap" resultType="int">
+		SELECT count(*) FROM ( SELECT * FROM(SELECT get_projectName(proj_id)AS proj_name,get_userName(proj_chief)AS user_name, `proj_team`.* FROM `proj_team`
+ WHERE proj_id IN(SELECT proj_id FROM `project_info` WHERE create_by =#{userInfo.userId}) ) AS t)as b
+		<where>
+		   		<if test="projectTeam.teamCode!=null and projectTeam.teamCode!=''">
+				and team_code like concat("%",#{projectTeam.teamCode},"%")
+			</if>
+			<if test="projectTeam.teamName!=null and projectTeam.teamName!=''">
+				and team_name like concat("%",#{projectTeam.teamName},"%")
+			</if>
+			<if test="projectTeam.projName!=null and projectTeam.projName!=''">
+				and proj_name like concat("%",#{projectTeam.projName},"%")
+			</if>
+			<if test="projectTeam.userName!=null and projectTeam.userName!=''">
+				and user_name like concat("%",#{projectTeam.userName},"%")
+			</if>
+		</where>
+	</select>
+<!-- 项目组长查询所有项目组信息 -->
+	<select id="findOnlyProjectTeam" parameterType="hashmap" resultMap="ProjectTeamMap">
+     SELECT * FROM  proj_team WHERE proj_chief =#{userInfo.userId}
+      <where>
+			<if test="projectTeam.teamCode!=null and projectTeam.teamCode!=''">
+				and team_code like concat("%",#{projectTeam.teamCode},"%")
+			</if>
+			<if test="projectTeam.teamName!=null and projectTeam.teamName!=''">
+				and team_name like concat("%",#{projectTeam.teamName},"%")
+			</if>
+			<if test="projectTeam.projName!=null and projectTeam.projName!=''">
+				and proj_name like concat("%",#{projectTeam.projName},"%")
+			</if>
+			<if test="projectTeam.userName!=null and projectTeam.userName!=''">
+				and user_name like concat("%",#{projectTeam.userName},"%")
+			</if>
+			
+		</where>
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 项目组长查询项目组总数-->	
+	<select id="findOnlyProjectTeamNum" parameterType="ProjectTeam" resultType="int">
+		SELECT count(*) FROM (SELECT * FROM  proj_team WHERE proj_chief =#{projChief})as t
+		<where>
+		    <if test="teamCode!=null and teamCode!=''">
+				and team_code like concat("%",#{teamCode},"%")
+			</if>
+			<if test="teamName!=null and teamName!=''">
+				and team_name like concat("%",#{teamName},"%")
+			</if>
+			<if test="projName!=null and projName!=''">
+				and proj_name like concat("%",#{projName},"%")
+			</if>
+			<if test="userName!=null and userName!=''">
+				and user_name like concat("%",#{userName},"%")
+			</if>	
+		</where>
+	</select>
+<!--配置项目ResultMap -->
+	<resultMap type="TeamMember" id="TeamMemberMap">
+		<id column="member_id" property="memberId" />
+		<result column="team_id" property="teamId" />
+		<result column="user_id" property="userId" />
+		<result column="team_name" property="teamName" />
+		<result column="user_name" property="userName" />
+		</resultMap>	
+<!-- 查询所有项目组成员信息 -->
+	<select id="findAllTeamMember" parameterType="hashmap" resultMap="TeamMemberMap">
+   select * from(SELECT get_teamName(team_id)AS team_name,get_userName(user_id)AS user_name,team_member.*FROM team_member WHERE team_id=#{teamMember.teamId}
+) as t		
+      <where>
+			<if test="teamMember.userName!=null and teamMember.userName!=''">
+				and user_name like concat("%",#{teamMember.userName},"%")
+			</if>
+		</where>
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+<!-- 查询项目组成员总数-->	
+	<select id="findAllTeamMemberNum" parameterType="TeamMember" resultType="int">
+		SELECT count(*) FROM ( SELECT get_teamName(team_id)AS team_name,get_userName(user_id)AS user_name,team_member.*FROM team_member WHERE team_id=#{teamId}) as t	
+		<where>
+		   <if test="userName!=null and userName!=''">
+				and user_name like concat("%",#{userName},"%")
+			</if>
+		</where>
+	</select>	
+<!-- 项目组负责人自动补全 -->
+    <select id="findAutoCompleteProjTeamChief" parameterType="String" resultType="String">
+    SELECT GROUP_CONCAT(user_name) FROM
+    (SELECT get_userName(user_id) AS user_name,`user_role`.* FROM `user_role` WHERE role_id=3 AND user_id NOT IN
+    (SELECT  proj_chief FROM proj_team WHERE proj_id IN (SELECT proj_id FROM`project_info` WHERE proj_state&lt;3)))
+    AS t WHERE user_name LIKE CONCAT("%",#{name},"%")
+
+    </select>
+<!-- 查询所有的项目 -->
+<select id="findAllProjects" resultMap="projectInfoMap">
+select * from project_info
+</select>
+<!-- 新建项目组 -->
+<insert id="insertProjectTeam" parameterType="ProjectTeam">
+insert into proj_team (proj_id,team_code,team_name,team_desc,proj_chief) VALUES
+(null,#{teamCode},#{teamName},#{teamDesc},get_userId(#{userName}))
+</insert>
+<!-- 项目组code唯一校验 -->
+<select id="findProjectTeamCode" resultType="ProjectTeam" resultMap="ProjectTeamMap">
+select * from proj_team where team_code=#{teamCode}
+</select>
+<!-- 项目成员名称自动补全 -->
+<select id="findAutoCompleteProjTeamUserName" parameterType="TeamMember" resultType="String">
+SELECT GROUP_CONCAT(user_name) FROM(
+SELECT get_userName(user_id) AS user_name,`user_role`.* FROM `user_role` WHERE role_id=2 AND user_id NOT IN
+(SELECT user_id FROM `team_member` WHERE team_id=get_teamId(#{teamName}) UNION
+SELECT user_id FROM `team_member` WHERE team_id NOT IN(get_teamId(#{teamName})) AND user_id IN 
+(SELECT excutor FROM`proj_task` WHERE task_state &lt; 3)))AS q
+ WHERE user_name LIKE CONCAT("%",#{userName},"%")
+</select>
+<!-- 新建项目组成员 -->
+<insert id="insertProjectTeamMember" parameterType="TeamMember">
+insert into team_member (team_id,user_id) VALUES
+(get_teamId(#{teamName}),get_userId(#{userName}))
+
+</insert>
+<!-- 查询除了自身所属项目组外其他项目组 -->
+<select id="findAllotPeople" parameterType="TeamMember" resultMap="ProjectTeamMap">
+
+select * from proj_team where team_id not in(#{teamId})
+</select>
+<!-- 判断（任务进度是否>0,实际消耗时间>0） -->
+
+ <select id="findJudgeTask" parameterType="TeamMember"  resultType="int">
+ SELECT COUNT(*) FROM proj_task WHERE excutor=get_userId(#{userName}) AND (PROCESS IS  NULL or finish_time IS NULL ) and is_delete=0
+</select> 
+<!-- 执行人重置为空，进行中任务修改为已暂停 -->
+<update id="updateProjTask" parameterType="String">
+update proj_task set excutor=null,task_state=2 where excutor=get_userId(#{userName})
+
+</update>
+<!-- 分配用户组 -->
+<update id="updateProjectTeam" parameterType="TeamMember">
+update team_member set team_id=#{teamId} where user_id=get_userId(#{userName})
+</update>
+
+</mapper>

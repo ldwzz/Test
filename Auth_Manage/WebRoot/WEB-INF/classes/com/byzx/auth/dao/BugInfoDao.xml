@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.BugInfoDao">
+	<resultMap type="ProjectInfo" id="projectInformation">
+		<id column="proj_id" property="projId" />
+		<result column="class_id" property="classId" />
+		<result column="proj_name" property="projName" />
+		<result column="proj_num" property="projNum" />
+		<result column="proj_desc" property="projDesc" />
+		<result column="vistor_type" property="vistorType" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="able_day" property="ableDay" />
+		<result column="proj_state" property="projState" />
+		<result column="proj_chief" property="projChief" />
+		<result column="remark" property="remark" />
+	</resultMap>
+	<resultMap type="BugInfo" id="allbuginformation">
+		<result column="bug_id" property="bugId" />
+		<result column="proj_id" property="projId" />
+		<result column="class_id" property="classId" />
+		<result column="bug_title" property="bugTitle" />
+		<result column="bug_num" property="bugNum" />
+		<result column="bug_desc" property="bugDesc" />
+		<result column="bug_level" property="bugLevel" />
+		<result column="bug_state" property="bugState" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="update_by" property="updateBy" />
+		<result column="file_url" property="fileUrl" />
+		<result column="pN" property="projName" />
+		<result column="uN" property="executor" />
+		<result column="creator" property="creator" />
+		<result column="cN" property="className" />
+	</resultMap>
+	<select id="findProjectadmin" parameterType="UserInfo"
+		resultMap="projectInformation">
+		SELECT * FROM project_info order by create_time desc
+	</select>
+	<select id="findProjectManage" parameterType="UserInfo"
+		resultMap="projectInformation">
+		select * from (SELECT * FROM project_info WHERE
+		create_by=#{userId}
+		UNION
+		SELECT * FROM `project_info` WHERE
+		vistor_type=0
+		UNION
+		SELECT * FROM
+		project_info WHERE vistor_type=2
+		AND
+		proj_id IN
+		(SELECT proj_id FROM
+		proj_user_list WHERE
+		user_id=#{userId}))
+		project
+	</select>
+	<select id="findProjectStaff" parameterType="UserInfo"
+		resultMap="projectInformation">
+		select * from
+		(SELECT FN_GET_PROJ_CHIEF(`proj_chief`)
+		proj_charge,FN_GET_PROJ_CHIEF(create_by) create_byuser,project_info.*
+		FROM project_info
+		WHERE proj_id in ( SELECT proj_id FROM proj_team WHERE
+		team_id in (SELECT
+		`team_id` FROM `team_member` WHERE
+		`user_id`=#{userId})) UNION SELECT
+		FN_GET_PROJ_CHIEF(`proj_chief`)
+		proj_charge,FN_GET_PROJ_CHIEF(`create_by`)
+		create_byuser,`project_info`.* FROM `project_info` WHERE
+		`vistor_type`=0 UNION SELECT FN_GET_PROJ_CHIEF(`proj_chief`)
+		proj_charge,FN_GET_PROJ_CHIEF(`create_by`)
+		create_byuser,`project_info`.* FROM `project_info` WHERE
+		`vistor_type`=2 AND `proj_id` IN (SELECT `proj_id` FROM
+		`proj_user_list` WHERE `user_id`=#{userId}) UNION SELECT
+		FN_GET_PROJ_CHIEF(`proj_chief`)
+		proj_charge,FN_GET_PROJ_CHIEF(`create_by`)
+		create_byuser,`project_info`.* FROM `project_info` WHERE `proj_id` in
+		(SELECT proj_id FROM proj_team WHERE proj_chief=#{userId}) ) project
+	</select>
+	<select id="findBugByCondition" resultMap="allbuginformation"
+		parameterType="HashMap">
+		select hang.* from(select am.*,creator.user_name creator from
+		(select
+		ah.*,project.proj_name pN from
+		(select ak.*,model.class_name cN from
+		(select bug.*,users.user_name uN from bug_info bug left join user_info
+		users
+		on bug.update_by=users.user_id)ak
+		left join sys_class model on
+		ak.class_id=model.class_id)ah left join
+		project_info project on
+		ah.proj_id=project.proj_id)
+		am left join user_info creator on
+		am.create_by=creator.user_id)hang
+		<where>
+			is_delete=0
+			<if test="buginfor.projId !=null  and buginfor.projId!=''">
+				and proj_id=#{buginfor.projId}
+			</if>
+			<if test="buginfor.classId!=null  and   buginfor.classId!=''">
+				and class_id=#{buginfor.classId}
+			</if>
+			<if test="buginfor.bugTitle!=null  and   buginfor.bugTitle!=''">
+				and bug_title like "%"#{buginfor.bugTitle}"%"
+			</if>
+			<if test="buginfor.bugNum!=null   and  buginfor.bugNum!=''">
+				and bug_num like "%"#{buginfor.bugNum}"%"
+			</if>
+			<if test="buginfor.startTime !=null  and  buginfor.startTime!=''">
+				and (create_time &gt; #{buginfor.startTime}
+				or create_time
+				like "%"#{buginfor.startTime}"%")
+			</if>
+			<if test="buginfor.endTime!=null   and  buginfor.endTime!=''">
+				and (create_time &lt; #{buginfor.endTime}
+				or create_time
+				like "%"#{buginfor.endTime}"%")
+			</if>
+			<if test="buginfor.executor!=null  and buginfor.executor!=''">
+				and uN like "%"#{buginfor.executor}"%"
+			</if>
+			<if test="buginfor.bugLevel!=null  and  buginfor.bugLevel!=''">
+				and bug_level=#{buginfor.bugLevel}
+			</if>
+			<if test="buginfor.bugState!=null  and  buginfor.bugState!=''">
+				and bug_state=#{buginfor.bugState}
+			</if>
+			<if test="buginfor.updateBy!=null  and  buginfor.updateBy!=''">
+				and update_by=#{buginfor.updateBy}
+			</if>
+		</where>
+		order by create_time desc limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	<select id="findBugNumByCondition" parameterType="BugInfo"
+		resultType="int">
+		select count(*) from(select am.*,creator.user_name creator from
+		(select ah.*,project.proj_name pN from
+		(select ak.*,model.class_name cN
+		from
+		(select bug.*,users.user_name uN from bug_info bug left join
+		user_info users
+		on bug.update_by=users.user_id)ak
+		left join sys_class
+		model on ak.class_id=model.class_id)ah left join
+		project_info project
+		on ah.proj_id=project.proj_id)
+		am left join user_info creator on
+		am.create_by=creator.user_id)hang
+		<where>
+			is_delete=0
+			<if test="projId!=null  and projId!=''">
+				and proj_id=#{projId}
+			</if>
+			<if test="classId!=null  and  classId!=''">
+				and class_id=#{classId}
+			</if>
+			<if test="bugTitle!=null  and  bugTitle!=''">
+				and bug_title like "%"#{bugTitle}"%"
+			</if>
+			<if test="bugNum!=null   and  bugNum!=''">
+				and bug_num like "%"#{bugNum}"%"
+			</if>
+			<if test="startTime!=null  and  startTime!=''">
+				and (create_time &gt; #{startTime}
+				or create_time like
+				"%"#{startTime}"%")
+			</if>
+			<if test="endTime!=null   and  endTime!=''">
+				and (create_time &lt; #{endTime}
+				or create_time like
+				"%"#{endTime}"%")
+			</if>
+			<if test="executor!=null  and executor!=''">
+				and uN like "%"#{executor}"%"
+			</if>
+			<if test="bugLevel!=null  and  bugLevel!=''">
+				and bug_level=#{bugLevel}
+			</if>
+			<if test="bugState!=null  and  bugState!=''">
+				and bug_state=#{bugState}
+			</if>
+			<if test="updateBy!=null  and  updateBy!=''">
+				and update_by=#{updateBy}
+			</if>
+		</where>
+	</select>
+	<insert id="insertBug" parameterType="BugInfo">
+		insert into
+		bug_info(proj_id,class_id,bug_title,bug_num,bug_state,bug_level,create_time,create_by,is_delete,bug_desc,file_url)
+		values
+		(#{projId},#{classId},#{bugTitle},#{bugNum},0,#{bugLevel},now(),#{createBy},0,#{bugDesc},#{fileUrl})
+	</insert>
+	<update id="updateAssignBug" parameterType="BugInfo">
+		update bug_info set
+		update_by=#{updateBy} where bug_num=#{bugNum}
+	</update>
+	<update id="updateBug" parameterType="BugInfo">
+		update bug_info set
+		bug_title=#{bugTitle},bug_desc=#{bugDesc},bug_level=#{bugLevel}
+		<if test="fileUrl != null and fileUrl!= ''">
+			,file_url=#{fileUrl}
+		</if>
+		where bug_id=#{bugId}
+	</update>
+	<update id="updateBugState" parameterType="BugInfo">
+		update bug_info set
+		bug_state=#{bugState} where bug_num=#{bugNum}
+	</update>
+	<select id="findBugNumExist" resultType="int" parameterType="BugInfo">
+		select count(*) from bug_info where bug_num=#{bugNum}
+	</select>
+	<resultMap type="UserInfo" id="userinfomap">
+		<id column="user_id" property="userId" />
+
+		<result column="user_name" property="userName" />
+	</resultMap>
+	<select id="finduserByProj" parameterType="BugInfo" resultMap="userinfomap">
+		SELECT * FROM user_info WHERE user_id IN
+			(SELECT user_id FROM team_member WHERE team_id IN
+				(SELECT team_id FROM proj_team WHERE proj_id=#{projId})) 
+		AND is_delete=0
+	</select>
+	<select id="findBugDetail" parameterType="BugInfo" resultMap="allbuginformation">
+		select hang.* from(select am.*,creator.user_name creator from
+		(select
+		ah.*,project.proj_name pN from
+		(select ak.*,model.class_name cN from
+		(select bug.*,users.user_name uN from bug_info bug left join user_info
+		users
+		on bug.update_by=users.user_id)ak
+		left join sys_class model on
+		ak.class_id=model.class_id)
+		ah left join project_info project on
+		ah.proj_id=project.proj_id)
+		am left join user_info creator on
+		am.create_by=creator.user_id)hang
+		where bug_id=#{bugId}
+	</select>
+	<insert id="insertBugRemake" parameterType="BugReplay">
+		insert into
+		bug_reply(bug_id,reply_content,parent_id,create_time,create_by,is_delete)
+		values(#{bugId},#{replyContent},#{parentId},now(),#{createBy},0)
+	</insert>
+	<resultMap type="BugReplay" id="remakesss">
+		<result column="bug_id" property="bugId" />
+		<result column="reply_content" property="replyContent" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="reply_id" property="replyId" />
+		<result column="name" property="nickName" />
+		<result column="fatheName" property="fatherName" />
+
+	</resultMap>
+	<select id="findBugRemake" parameterType="HashMap" resultMap="remakesss">
+		select * from
+			(select son.*,father.nick_name fatheName from
+				(select bug.*,man.nick_name name from bug_reply bug 
+				left join user_info man on bug.create_by=man.user_id) son
+			left join (select fater.*,peop.nick_name from (select * from bug_reply) fater 
+						left join user_info peop on peop.user_id=fater.create_by) father
+			on son.parent_id=father.reply_id) am
+		where am.bug_id=#{bugId} and is_delete=0
+		order by am.create_time desc;
+	</select>
+	<update id="deleteReply" parameterType="BugReplay">
+		update bug_reply set
+		is_delete=1 where reply_id=#{replyId}
+	</update>
+</mapper>

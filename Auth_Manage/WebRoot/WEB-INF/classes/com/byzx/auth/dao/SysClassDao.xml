@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.SysClassDao">
+	<!-- 配置resultMap -->
+	<resultMap type="SysClass" id="getResultMap">
+		<id column="class_id" property="classId" />
+		<result column="class_name" property="className" />
+		<result column="parent_id" property="parentId" />
+		<result column="class_desc" property="classDesc" />
+		<result column="sys_type" property="sysType" />
+		<result column="grade" property="grade" />
+		<result column="class_code" property="classCode" />
+	</resultMap>
+	<!-- 查询所有系统分类信息 -->
+	<select id="findAllSysClass" resultMap="getResultMap" parameterType="SysClass">
+		SELECT * FROM sys_class
+	</select>
+	<!-- 根据传进来的classCode和className 查询是否存在，唯一验证 -->
+	<select id="findSum" resultType="int" parameterType="SysClass">
+		SELECT count(*) FROM sys_class where class_name=#{className} or class_code=#{classCode}
+	</select>
+	
+	<!-- 新增一条系统分了数据 -->
+	 <insert id="insertSysClass" parameterType="SysClass">
+	  insert into sys_class (class_name,parent_id,class_desc,sys_type,grade,class_code) values (#{className},#{parentId},#{classDesc},#{sysType},#{grade},#{classCode})
+	 </insert>
+	
+	<!--根据classId修改对应的信息 -->
+	 <update id="updateSysClass" parameterType="SysClass">
+	  update sys_class 
+	   <set>
+	     <if test="className!=null and className!=''">class_name=#{className},</if>
+	     <if test="classDesc!=null and classDesc!=''">class_desc=#{classDesc}</if>
+	   </set>
+	   where class_id=#{classId}
+	 </update>
+	<!-- 根据传进来的classId，查询子集，让parent_id=calssId -->
+	<select id="findSysClassByPid" resultMap="getResultMap" parameterType="SysClass">
+		SELECT * FROM sys_class where parent_id=#{classId} 
+	</select>
+	
+		<!-- 根据传进来的classId查询出子集的所有classids -->
+	<select id="findIdsByPid" resultType="String" parameterType="int">
+		SELECT GROUP_CONCAT(class_id) FROM sys_class where parent_id=#{classId} 
+	 </select>
+	
+	
+	</mapper>

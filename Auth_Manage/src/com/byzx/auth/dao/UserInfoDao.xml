@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byzx.auth.dao.UserInfoDao">
+	<!-- 配置userInforesultMap -->
+	<resultMap type="UserInfo" id="UserInfoMap">
+		<id column="user_id" property="userId" />
+		<result column="group_id" property="groupId" />
+		<result column="nick_name" property="nickName" />
+		<result column="user_name" property="userName" />
+		<result column="user_pwd" property="userPwd" />
+		<result column="user_type" property="userType" />
+		<result column="user_state" property="userState" />
+		<result column="is_delete" property="isDelete" />
+		<result column="create_by" property="createBy" />
+		<result column="create_time" property="createTime" />
+		<result column="update_by" property="updateBy" />
+		<result column="update_time" property="updateTime" />
+		<result column="group_name" property="groupName" />
+	</resultMap>
+	<!-- 用户登录 -->
+	<select id="login" parameterType="UserInfo" resultMap="UserInfoMap">
+		select *
+		from user_info where user_name=#{userName} and
+		user_pwd=MD5(#{userPwd}) and is_delete=0
+	</select>
+	<!-- authInfo的resulrtMap配置 -->
+	<resultMap type="AuthInfo" id="findAuthInfoMap">
+		<id column="auth_id" property="authId" />
+		<result column="parent_id" property="parentId" />
+		<result column="auth_name" property="authName" />
+		<result column="auth_grade" property="authGrade" />
+		<result column="auth_url" property="authUrl" />
+		<result column="auth_desc" property="authDesc" />
+		<result column="auth_type" property="authType" />
+		<result column="auth_state" property="authState" />
+		<result column="auth_code" property="authCode" />
+	</resultMap>
+	<!-- 查询用户权限 -->
+	<select id="findAuthInfo" parameterType="hashmap" resultMap="findAuthInfoMap">
+		SELECT * FROM AUTH_INFO WHERE `auth_id` IN( SELECT role_auth.`auth_id`
+		FROM ROLE_AUTH role_auth,ROLE role	WHERE role_auth.`role_id`=role.`role_id`
+		AND role.role_state=1 AND	role_auth.`role_id` IN(	SELECT `role_id` FROM USER_ROLE
+		WHERE `user_id`=#{userInfo.userId})) AND `auth_state`=1	AND `parent_id`=#{parentId}
+		UNION
+		SELECT * FROM AUTH_INFO WHERE `auth_id` IN(SELECT `auth_id` FROM	user_auth WHERE `user_id`=#{userInfo.userId})
+		AND `auth_state`=1 AND `parent_id`=#{parentId}
+		UNION
+		SELECT * FROM AUTH_INFO WHERE `auth_id` IN( SELECT role_auth.`auth_id` FROM ROLE_AUTH
+		role_auth,ROLE role WHERE role_auth.`role_id`=role.`role_id` AND role.role_state=1
+		AND role_auth.`role_id` IN( SELECT `role_id` FROM group_role WHERE `group_id`=#{userInfo.groupId}))
+		AND `auth_state`=1 AND `parent_id`=#{parentId}
+	</select>
+	<!-- 分页查询所有用户信息 -->
+	<select id="getAllUsers" resultMap="UserInfoMap" parameterType="hashmap">
+		select * from (SELECT userinfo.*,`user_group`.`group_name` FROM
+		`user_info` userinfo LEFT JOIN `user_group`
+		ON
+		userinfo.`group_id`=`user_group`.`group_id`) a1
+		<where>
+			is_delete=0
+			<if test="user.userName!=null and user.userName!=''">
+				and a1.user_name like concat(#{user.userName},"%")
+			</if>
+			<if test="user.userType!=null and user.userType!=''">
+				and a1.user_type=#{user.userType}
+			</if>
+			<if test="user.userState!=null and user.userState!=''">
+				and a1.user_state=#{user.userState}
+			</if>
+			<if test="user.endTime!=null and user.endTime!=''">
+				and (a1.`create_time` &lt; #{user.endTime}
+				or
+				a1.`create_time`
+				like concat(#{user.endTime},"%"))
+			</if>
+			<if test="user.startTime!=null and user.startTime!=''">
+				and (a1.`create_time` &gt; #{user.startTime}
+				or
+				a1.`create_time`
+				like concat(#{user.startTime},"%"))
+			</if>
+		</where>
+		order by a1.create_time desc
+		limit
+		#{page.pageIndex},#{page.pageNum}
+	</select>
+	<!-- 查询用户总数 -->
+	<select id="getUserNum" resultType="int" parameterType="UserInfo">
+		select count(*) from (SELECT userinfo.*,`user_group`.`group_name` FROM
+		`user_info` userinfo LEFT JOIN `user_group`
+		ON
+		userinfo.`group_id`=`user_group`.`group_id`) a1
+		<where>
+			is_delete=0
+			<if test="userName!=null and userName!=''">
+				and a1.user_name like "%"#{userName}"%"
+			</if>
+			<if test="userType!=null and userType!=''">
+				and a1.user_type=#{userType}
+			</if>
+			<if test="userState!=null and userState!=''">
+				and a1.user_state=#{userState}
+			</if>
+			<if test="endTime!=null and endTime!=''">
+				and (a1.`create_time` &lt; #{endTime}
+				or
+				a1.`create_time`
+				like
+				"%"#{endTime}"%")
+			</if>
+			<if test="startTime!=null and startTime!=''">
+				and (a1.`create_time` &gt; #{startTime}
+				or
+				a1.`create_time`
+				like
+				"%"#{startTime}"%")
+			</if>
+		</where>
+	</select>
+	<!-- 用户名唯一性校验 -->
+	<select id="addVerify" parameterType="UserInfo" resultType="int">
+		select count(*) from user_info where user_name=#{userName}
+	</select>
+	<!-- 删除用户信息 -->
+	<update id="deleteUser" parameterType="UserInfo">
+		update user_info set
+		is_delete=1 where user_id=#{userId}
+	</update>
+	<!-- 重置用户密码 -->
+	<update id="resetPassword" parameterType="UserInfo">
+		update user_info set
+		user_pwd=MD5('123456') where user_id=#{userId}
+	</update>
+	<!-- 修改用户状态 -->
+	<update id="updateUserState" parameterType="UserInfo">
+		update user_info set
+		user_state=#{userState} where user_id=#{userId}
+	</update>
+	<!-- 修改用户信息 -->
+	<update id="updateUserInfo" parameterType="UserInfo">
+		update user_info
+		<set>
+			<if test="nickName!=null and nickName!=''">
+				nick_name=#{nickName},
+			</if>
+			<if test="userPwd!=null and userPwd!=''">
+				user_pwd=MD5(#{userPwd}),
+			</if>
+			<if test="updateBy>0">
+				update_by=#{updateBy},
+			</if>
+			<if test="updateTime!=null and updateTime!=''">
+				update_time=#{updateTime}
+			</if>
+		</set>
+		where user_id=#{userId}
+	</update>
+	<!-- 添加用户 -->
+	<insert id="addUserInfo" parameterType="UserInfo">
+		INSERT INTO
+		`user_info`(`nick_name`,`user_name`,`user_pwd`,`create_by`)
+		VALUES
+		(#{nickName},#{userName},MD5(#{userPwd}),#{createBy})
+	</insert>
+	<!-- 修改用户状态 -->
+	<update id="deleteUsers" parameterType="UserInfo">
+		UPDATE `user_info` SET `is_delete`=1 WHERE `user_id` IN
+		<foreach collection="userIds" item="userId" open="(" close=")"
+			separator=",">
+			#{userId}
+		</foreach>
+	</update>
+	<!-- 查询用户组数量 -->
+	<select id="getUserGroupNum" parameterType="UserGroupInfo"
+		resultType="int">
+		SELECT COUNT(*) FROM `user_group`
+		<where>
+			<if test="groupName!=null and groupName!=''">
+				and group_name like concat(#{groupName},"%")
+			</if>
+			<if test="groupState!=null and groupState!=''">
+				and group_state=#{groupState}
+			</if>
+		</where>
+	</select>
+	<!-- 配置userGroupInfo的resultMap -->
+	<resultMap type="UserGroupInfo" id="UserGroupMap">
+		<id column="group_id" property="groupId" />
+		<result column="group_name" property="groupName" />
+		<result column="group_code" property="groupCode" />
+		<result column="group_desc" property="groupDesc" />
+		<result column="group_state" property="groupState" />
+	</resultMap>
+	<!-- 分页查询用户组信息 -->
+	<select id="getAllUserGroup" resultMap="UserGroupMap"
+		parameterType="hashmap">
+		SELECT * FROM `user_group`
+		<where>
+			<if test="groupInfo.groupName!=null and groupInfo.groupName!=''">
+				and group_name like concat(#{groupInfo.groupName},"%")
+			</if>
+			<if test="groupInfo.groupState!=null and groupInfo.groupState!=''">
+				and group_state=#{groupInfo.groupState}
+			</if>
+		</where>
+		order by group_id desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	<!-- 查出启用用户组数量 -->
+	<select id="getUserGroup" resultMap="UserGroupMap">
+		SELECT * FROM `user_group`
+		where group_state=1
+	</select>
+	<!-- 修改用户信息的用户组id -->
+	<update id="updateGroupId" parameterType="UserInfo">
+		UPDATE `user_info` SET
+		`group_id`=#{groupId} where user_id=#{userId}
+	</update>
+	<!-- 用户组code唯一校验 -->
+	<select id="addGroupVerify" parameterType="UserGroupInfo"
+		resultType="int">
+		SELECT COUNT(*) FROM `user_group` WHERE
+		`group_code`=#{groupCode}
+	</select>
+	<!-- 添加用户组 -->
+	<insert id="addGroupInfo" parameterType="UserGroupInfo">
+		INSERT INTO
+		`user_group`(`group_name`,`group_code`,`group_desc`)
+		values(#{groupName},#{groupCode},#{groupDesc})
+	</insert>
+	<!-- 修改用户组状态 -->
+	<update id="updateGroupState" parameterType="UserGroupInfo">
+		UPDATE `user_group`
+		SET `group_state`=#{groupState} WHERE `group_id`=#{groupId}
+	</update>
+	<!-- 根据用户id查询角色ids -->
+	<select id="findRoleIds" parameterType="UserInfo" resultType="string">
+		SELECT GROUP_CONCAT(`role`.`role_code`) FROM `user_role`,role WHERE
+		`user_id`=#{userId} AND `user_role`.`role_id`=`role`.`role_id`
+	</select>
+	<!-- 数据权限 -->
+	<select id="getUserInfos" parameterType="hashmap" resultMap="UserInfoMap">
+		select * from (SELECT a1.*,a2.`group_name` group_name FROM (SELECT *
+		FROM `user_info` WHERE `is_delete`='0'
+		AND `create_by`=#{user.userId}
+		OR `create_by` IN(SELECT `user_id` FROM `user_role` WHERE
+		`role_id`IN
+		(SELECT `role_id` FROM `role` WHERE `role_code`='manage')))a1,
+		`user_group` a2 WHERE a1.group_id=a2.`group_id`)a3
+		<where>
+			<if test="user.userName!=null and user.userName!=''">
+				and a3.user_name like concat(#{user.userName},"%")
+			</if>
+			<if test="user.userType!=null and user.userType!=''">
+				and a3.user_type=#{user.userType}
+			</if>
+			<if test="user.userState!=null and user.userState!=''">
+				and a3.user_state=#{user.userState}
+			</if>
+			<if test="user.endTime!=null and user.endTime!=''">
+				and (a3.`create_time` &lt; #{user.endTime}
+				or
+				a3.`create_time`
+				like concat(#{user.endTime},"%"))
+			</if>
+			<if test="user.startTime!=null and user.startTime!=''">
+				and (a3.`create_time` &gt; #{user.startTime}
+				or
+				a3.`create_time`
+				like concat(#{user.startTime},"%"))
+			</if>
+		</where>
+		order by a3.create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	<!-- 数据权限(查询用户数量) -->
+	<select id="getUsersInfoNum" parameterType="UserInfo"
+		resultType="int">
+		SELECT COUNT(*) FROM (SELECT * FROM `user_info` WHERE `is_delete`='0'
+		AND `create_by` =#{userId} OR `create_by` IN(SELECT `user_id`
+		FROM`user_role`
+		WHERE `role_id`IN (SELECT `role_id` FROM `role` WHERE
+		`role_code`='manage')))a1
+		<where>
+			<if test="userName!=null and userName!=''">
+				and a1.user_name like concat(#{userName},"%")
+			</if>
+			<if test="userType!=null and userType!=''">
+				and a1.user_type=#{userType}
+			</if>
+			<if test="userState!=null and userState!=''">
+				and a1.user_state=#{userState}
+			</if>
+			<if test="endTime!=null and endTime!=''">
+				and (a1.`create_time` &lt; #{endTime}
+				or
+				a1.`create_time`
+				like concat(#{endTime},"%"))
+			</if>
+			<if test="startTime!=null and startTime!=''">
+				and (a1.`create_time` &gt; #{startTime}
+				or
+				a1.`create_time`
+				like concat(#{startTime},"%"))
+			</if>
+		</where>
+	</select>
+	
+	
+<!-- 根据用户名查询用户id -->
+	   <select id="login2" parameterType="UserInfo" resultMap="UserInfoMap">
+		select *
+		from user_info where user_name=#{userName} 
+	</select>
+	
+<!-- 根据用户id查询用户名 -->
+	 <select id="userNameByUserId" parameterType="int" resultType="String">
+		select user_name
+		from user_info where user_id=#{userId} 
+	</select>
+<!-- 根据用户userIds（可能多个）查询出对应的userName -->	
+	 <select id="userIdsByUserName" parameterType="String" resultType="String">
+		select GROUP_CONCAT(user_id) 
+		from user_info where user_name like concat("%",#{userName} ,"%")
+	</select> 	
+	
+	
+	
+</mapper>

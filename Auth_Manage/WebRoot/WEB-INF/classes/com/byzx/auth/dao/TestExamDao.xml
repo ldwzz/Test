@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byzx.auth.dao.TestExamDao">
+	<resultMap type="TestExam" id="testexam">
+		<result column="test_id" property="testId" />
+		<result column="proj_id" property="projId" />
+		<result column="test_type" property="testType" />
+		<result column="test_title" property="testTitle" />
+		<result column="test_desc" property="testDesc" />
+		<result column="result" property="result" />
+		<result column="executor" property="executor" />
+		<result column="file_url" property="fileUrl" />
+		<result column="test_state" property="testState" />
+		<result column="pm" property="projName" />
+		<result column="end_time" property="endTime" />
+		<result column="nm" property="createName" />
+		<result column="create_time" property="createTime" />
+		<result column="create_by" property="createBy" />
+		<result column="start_time" property="startTime" />
+
+	</resultMap>
+	<select id="findExamMonter" resultMap="testexam" parameterType="hashmap">
+		select test2.*,users.nick_name nm from(select test1.*,pro.proj_name pm
+		from test_examp test1 left join
+		project_info pro on
+		pro.proj_id=test1.proj_id)test2 left join user_info users
+		on test2.create_by=users.user_id 
+		having is_delete='0'
+			<if test="team.projId!=null and team.projId!=''">
+				and proj_id=#{team.projId}
+			</if>
+			<if test="team.testState!=null and team.testState!=''">
+				and test_state=#{team.testState}
+			</if>
+			<if test="team.testType!=null and team.testType!=''">
+				and test_type=#{team.testType}
+			</if>
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	<select id="findNumExamMonter" resultType="int" parameterType="TestExam">
+		select count(*) from(select test1.*,pro.proj_name pm from test_examp
+		test1
+		left join project_info pro on pro.proj_id=test1.proj_id having is_delete='0')test2
+		<where>
+			<if test="projId!=null and projId!=''">
+				and proj_id=#{projId}
+			</if>
+			<if test="testState!=null and testState!=''">
+				and test_state=#{testState}
+			</if>
+			<if test="testType!=null and testType!=''">
+				and test_type=#{testType}
+			</if>
+		</where>
+	</select>
+	<select id="findExamMember" parameterType="hashmap" resultMap="testexam">
+		select * from(select test2.*,users.nick_name nm from(select
+		test1.*,pro.proj_name pm from test_examp test1 left join
+		project_info
+		pro on pro.proj_id=test1.proj_id)test2 left join user_info users
+		on
+		test2.create_by=users.user_id)au
+		having is_delete='0' and create_by=#{user.userId} or executor=#{user.userName}
+			<if test="team.projId!=null and team.projId!=''">
+				and proj_id=#{team.projId}
+			</if>
+			<if test="team.testState!=null and team.testState!=''">
+				and test_state=#{team.testState}
+			</if>
+			<if test="team.testType!=null and team.testType!=''">
+				and test_type=#{team.testType}
+			</if>
+		order by create_time desc
+		limit #{page.pageIndex},#{page.pageNum}
+	</select>
+	<select id="findNumExamMember" parameterType="hashmap"
+		resultType="int">
+		select count(*) from(select test2.*,users.nick_name nm from(select
+		test1.*,pro.proj_name pm from test_examp test1 left join
+		project_info
+		pro on pro.proj_id=test1.proj_id)test2 left join user_info users
+		on
+		test2.create_by=users.user_id having is_delete='0')au
+		<where>
+			create_by=#{user.userId} or executor=#{user.userName}
+			<if test="team.projId!=null and team.projId!=''">
+				and proj_id=#{team.projId}
+			</if>
+			<if test="team.testState!=null and team.testState!=''">
+				and test_state=#{team.testState}
+			</if>
+			<if test="team.testType!=null and team.testType!=''">
+				and test_type=#{team.testType}
+			</if>
+		</where>
+	</select>
+	<insert id="insertExam" parameterType="TestExam">
+		insert into
+		test_examp(proj_id,test_type,test_title,test_desc,create_by,create_time,test_state,is_delete)
+		values(#{projId},#{testType},#{testTitle},#{testDesc},#{createBy},now(),0,'0')
+	</insert>
+	<update id="updateExamAssign" parameterType="TestExam">
+		update test_examp
+		set executor=#{executor}, test_state=#{testState},start_time=now() where
+		test_id=#{testId}
+	</update>
+	<update id="updateExam" parameterType="TestExam">
+		update test_examp
+		<set>
+			test_id=#{testId},
+			<if test="fileUrl!=null  and fileUrl!=''">
+				file_url=#{fileUrl},
+			</if>
+			<if test="testState!=null  and testState!=''">
+				test_state=#{testState},
+			</if>
+			<if test="result!=null  and result!=''">
+				result=#{result},
+			</if>
+			<if test="endTime!=null  and  endTime!='' ">
+				end_time=#{endTime}
+			</if>
+		</set>
+		where test_id=#{testId}
+	</update>
+	<resultMap type="UserInfo" id="userlist">
+		<id column="user_id" property="userId" />
+		<result column="group_id" property="groupId" />
+		<result column="nick_name" property="nickName" />
+		<result column="user_name" property="userName" />
+	</resultMap>
+	<select id="findTestMember" resultMap="userlist">
+		select * from user_info
+		where user_id in(select user_id from user_role where
+		role_id in(select
+		role_id from role where role_code="testmember"))
+		and is_delete='0'
+	</select>
+</mapper>
